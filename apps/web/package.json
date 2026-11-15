@@ -1,0 +1,21 @@
+{
+  "name": "@unibridge/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

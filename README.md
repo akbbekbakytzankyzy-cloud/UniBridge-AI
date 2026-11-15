@@ -1,1 +1,64 @@
-# UniBridge-AI
+# UniBridgeAI
+
+A university data-reuse platform: maintain a faculty profile once, manage publication records, and generate department forms from saved information. React + Express + PostgreSQL/pgvector, with a Windows/macOS Tauri shell scaffold.
+
+## Implemented
+
+- Teacher/student login, expiring server-side sessions and role checks.
+- Faculty profile: employment, education, qualifications and awards.
+- Manual publications with DOI validation and explicit unverified status.
+- Private versioned HR/research exports in CSV or JSON.
+- Shared field schema, revision conflict detection, ordered database migrations and integration tests.
+
+Student accounts can sign in but cannot access faculty data. Department staff sharing, DU/my.du adapters, OpenAlex matching and AI processing remain future work. Legacy course tables/APIs are retained; the main UI now uses the faculty model.
+
+## Quick local preview (no Docker)
+
+Requires Node.js 22.12+ or 24 LTS:
+
+```powershell
+npm.cmd ci
+npm.cmd run dev:local
+```
+
+Open http://localhost:5173. Initial local-only account credentials are saved in ignored `data/local-access.txt`. This mode uses persistent embedded PostgreSQL (PGlite + pgvector) in `data/local-preview/`, not the shared PostgreSQL service. It is for development only. Keep real personnel data out of this preview.
+
+## PostgreSQL server
+
+Requires Docker Desktop with Linux containers and PowerShell 7:
+
+```powershell
+./tools/start-database.ps1
+$env:UB_INITIAL_PASSWORD = Read-Host 'Teacher password (12+ characters)' -MaskInput
+npm.cmd run user:create -- teacher@example.edu "Teacher" teacher
+Remove-Item Env:UB_INITIAL_PASSWORD
+npm.cmd run dev
+```
+
+The setup script creates `.env` with random database credentials if it does not exist, starts PostgreSQL 17 with pgvector, waits for readiness and applies migrations. Existing configuration and volumes are preserved. Stop the local preview before starting the server-backed API: both use port 3001. Data is separate between modes.
+
+On macOS, copy `.env.example` to `.env`, replace both example password occurrences with the same strong password, run `docker compose up -d --wait`, then `npm run db:migrate`. Provision users with the same CLI and a shell-specific hidden password prompt.
+
+## User workflow
+
+Sign in as a teacher, save My profile, add publications and generate a department form. Downloads are snapshots of saved values. Templates are UniBridgeAI drafts; compatibility with DU/my.du is not claimed. No attached dataset is imported automatically.
+
+## Checks
+
+```powershell
+npm.cmd test
+npm.cmd run build
+```
+
+Tests create disposable embedded PostgreSQL databases with pgvector. They exercise migration replay, auth, profile ownership, stale updates, publication isolation, private export snapshots and CSV escaping. No configured user database is changed by tests.
+
+## Desktop and deployment
+
+Tauri targets Windows/macOS. Install its platform prerequisites, start the development servers and run `npm run desktop:dev -w apps/web`. Native installers are not built yet. Production loads a hosted HTTPS UI; replace the intentionally invalid production URL in `apps/web/src-tauri/tauri.conf.json`. Serve `/api` on that same origin and set APP_ORIGIN and NODE_ENV=production. Database credentials stay on the server.
+
+## Documentation
+
+- `docs/FACULTY_DATA_MODEL.md`: schema, API, local/server modes and next research module.
+- `docs/ARCHITECTURE.md`: deployment and security decisions.
+- `docs/RESEARCH_PLAN.md`: research prompts and evaluation plan.
+- `docs/VERIFICATION.md`: checks and limitations.

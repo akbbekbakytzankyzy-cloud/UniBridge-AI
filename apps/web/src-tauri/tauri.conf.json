@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "UniBridgeAI",
+  "version": "0.1.0",
+  "identifier": "edu.unibridge.desktop",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "https://unibridge.example.invalid"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "UniBridgeAI",
+        "width": 1280,
+        "height": 850,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:"
+    }
+  },
+  "bundle": { "active": true, "targets": "all" }
+}

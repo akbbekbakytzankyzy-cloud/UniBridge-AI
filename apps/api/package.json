@@ -1,0 +1,25 @@
+{
+  "name": "@unibridge/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "migrate": "node src/migrate.js",
+    "user:create": "node src/create-user.js",
+    "test": "node --test test/*.test.js",
+    "local": "node src/local.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@electric-sql/pglite-pgvector": "^0.0.17"
+  }
+}

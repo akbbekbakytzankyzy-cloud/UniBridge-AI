@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "fields": [
+    {
+      "key": "name_cyrillic",
+      "label": "Full name (Cyrillic)",
+      "required": true
+    },
+    { "key": "name_latin", "label": "Full name (Latin)" },
+    { "key": "phone", "label": "Phone" },
+    { "key": "department", "label": "Department", "required": true },
+    { "key": "position", "label": "Position", "required": true },
+    {
+      "key": "employment_fraction",
+      "label": "Employment fraction",
+      "type": "number",
+      "min": 0.01,
+      "max": 2
+    },
+    { "key": "hire_date", "label": "Employment start date", "type": "date" },
+    { "key": "degree", "label": "Academic degree" },
+    { "key": "degree_field", "label": "Degree field" },
+    { "key": "academic_title", "label": "Academic title" },
+    { "key": "orcid", "label": "ORCID (0000-0000-0000-0000)" },
+    { "key": "openalex_id", "label": "OpenAlex author ID (A123...)" }
+  ],
+  "collections": {
+    "education": {
+      "label": "Education",
+      "fields": [
+        { "key": "level", "label": "Degree level", "required": true },
+        { "key": "institution", "label": "Institution", "required": true },
+        { "key": "specialty", "label": "Specialty" },
+        { "key": "year", "label": "Graduation year", "type": "year" },
+        { "key": "diploma_number", "label": "Diploma number" }
+      ]
+    },
+    "training": {
+      "label": "Professional development",
+      "fields": [
+        { "key": "title", "label": "Programme title", "required": true },
+        { "key": "organization", "label": "Organization" },
+        {
+          "key": "hours",
+          "label": "Hours",
+          "type": "number",
+          "min": 0,
+          "max": 10000
+        },
+        { "key": "completed_at", "label": "Completion date", "type": "date" },
+        {
+          "key": "certificate_reference",
+          "label": "Certificate reference (no upload)"
+        }
+      ]
+    },
+    "awards": {
+      "label": "Awards",
+      "fields": [
+        { "key": "title", "label": "Award title", "required": true },
+        { "key": "issuer", "label": "Awarded by" },
+        { "key": "year", "label": "Year", "type": "year" },
+        {
+          "key": "evidence_reference",
+          "label": "Evidence reference (no upload)"
+        }
+      ]
+    }
+  },
+  "templates": [
+    {
+      "id": "hr-profile",
+      "name": "HR profile and attestation",
+      "version": 1,
+      "sections": ["details", "education", "training", "awards"]
+    },
+    {
+      "id": "research-summary",
+      "name": "Research publication summary",
+      "version": 1,
+      "sections": ["publications"]
+    }
+  ]
+}
