@@ -15,7 +15,7 @@ test("faculty profiles, private exports and publication ownership", async (t) =>
   assert.equal(
     (await db.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0]
       .n,
-    2,
+    3,
   );
   for (const [email, role] of [
     ["teacher@test.edu", "teacher"],

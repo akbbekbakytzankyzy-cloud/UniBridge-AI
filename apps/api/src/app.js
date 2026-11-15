@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { facultyRouter } from "./faculty.js";
+import { portalRouter } from "./portal.js";
 import {
   newToken,
   readSession,
@@ -107,6 +108,7 @@ export async function createApp(
       ? next()
       : res.status(403).json({ error: "Teacher access required" });
   app.use("/api/faculty", facultyRouter(pool));
+  app.use("/api/portal", portalRouter(pool));
   app.get("/api/courses", async (req, res) => {
     const { rows } = await pool.query(
       "SELECT c.id,c.code,c.title,u.name AS teacher_name FROM courses c JOIN users u ON u.id=c.teacher_id WHERE c.teacher_id=$1 OR EXISTS (SELECT 1 FROM enrollments e WHERE e.course_id=c.id AND e.student_id=$1) ORDER BY c.code",

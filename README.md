@@ -1,6 +1,6 @@
 # UniBridgeAI
 
-A university data-reuse platform: maintain a faculty profile once, manage publication records, and generate department forms from saved information. React + Express + PostgreSQL/pgvector, with a Windows/macOS Tauri shell scaffold.
+An independent digital university platform: learning, academic records, faculty profiles, research and campus services in one role-aware workspace. React + Express + PostgreSQL/pgvector, with a Windows/macOS Tauri shell scaffold. AI will use Ollama; model calls and agents are not connected yet.
 
 ## Implemented
 
@@ -10,7 +10,7 @@ A university data-reuse platform: maintain a faculty profile once, manage public
 - Private versioned HR/research exports in CSV or JSON.
 - Shared field schema, revision conflict detection, ordered database migrations and integration tests.
 
-Student accounts can sign in but cannot access faculty data. Department staff sharing, DU/my.du adapters, OpenAlex matching and AI processing remain future work. Legacy course tables/APIs are retained; the main UI now uses the faculty model.
+Student accounts have their own dashboard, courses, contact profile and private request drafts. Students cannot access faculty data. Timetable and academic-record readers are prepared; scheduling/grade-entry editors, study plans, registration, advising and library workflows remain future work. DU and LMS are references only, not API dependencies. See `docs/UNIVERSITY_PORTAL.md` for verified scope.
 
 ## Quick local preview (no Docker)
 
@@ -58,6 +58,7 @@ Tauri targets Windows/macOS. Install its platform prerequisites, start the devel
 
 ## Documentation
 
+- `docs/UNIVERSITY_PORTAL.md`: current portal modules, reference observations and verification.
 - `docs/FACULTY_DATA_MODEL.md`: schema, API, local/server modes and next research module.
 - `docs/ARCHITECTURE.md`: deployment and security decisions.
 - `docs/RESEARCH_PLAN.md`: research prompts and evaluation plan.

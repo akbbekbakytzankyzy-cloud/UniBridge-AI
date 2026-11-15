@@ -21,3 +21,7 @@ CI is configured to install locked dependencies, run tests and build the web app
 - Persistent local PGlite/pgvector preview started successfully. Browser checks passed for teacher login, profile save and HR form generation with download links. Only synthetic test values were entered.
 - PostgreSQL Docker service remains unstarted: neither Docker Desktop nor WSL is installed. `tools/start-database.ps1` prepares startup after those prerequisites are installed. It has not been tested against a Docker engine here.
 - Native Tauri builds and DU/my.du import compatibility remain unverified. The local preview is not a shared production database.
+
+## University portal revision
+
+All six automated tests and the Vite production build passed. Browser checks covered teacher course creation, student enrollment, publication of a synthetic material and student read-only access. The local database was migrated to version 003, retaining previous faculty records. See UNIVERSITY_PORTAL.md for current scope. Ollama is the chosen next AI runtime, but no model calls are active.
