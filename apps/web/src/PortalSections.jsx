@@ -496,72 +496,180 @@ export function StudentProfile({ user }) {
 }
 export function AIWorkspace() {
   const [prompt, setPrompt] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [connection, setConnection] = useState(null);
+  const [model, setModel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const refresh = async () => {
+    try {
+      const data = await api("/ai/status");
+      setConnection(data);
+      setModel((current) =>
+        data.models.some((m) => m.name === current)
+          ? current
+          : data.models.find((m) => m.name === "qwen3:1.7b")?.name ||
+            data.models[0]?.name ||
+            "",
+      );
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  useEffect(() => {
+    refresh();
+  }, []);
   const ideas = [
-    "Summarize my upcoming deadlines with links to their sources.",
-    "Find missing information in my university profile.",
-    "Help prepare a department report from my saved records.",
-    "Check whether these publications belong to the same author.",
+    "Explain precision, recall and F1 with a simple example.",
+    "Help me draft an academic project introduction.",
+    "What evidence is needed to match a publication to an author?",
   ];
+  async function send(e) {
+    e.preventDefault();
+    if (busy || !prompt.trim()) return;
+    const question = prompt.trim();
+    // Keep five complete turns, followed by the new question.
+    const context = [
+      ...messages.slice(-10).map(({ role, content }) => ({ role, content })),
+      { role: "user", content: question },
+    ];
+    setBusy(true);
+    setError("");
+    try {
+      const data = await api("/ai/chat", { model, messages: context });
+      setMessages((previous) => [
+        ...previous,
+        { role: "user", content: question },
+        { ...data.message, truncated: data.truncated },
+      ]);
+      setPrompt("");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <PageHeading
         eyebrow="UNIBRIDGE INTELLIGENCE"
         title="AI workspace"
-        description="A place to work with your university information, with sources and review."
+        description="Try your local AI assistant. Ask in English, Russian or Kazakh."
       />
-      <section className="ai-workspace">
-        <div className="ai-orb">
-          <Icon name="ai" size={38} />
-        </div>
-        <h2>What would you like to work on?</h2>
-        <p>Prepare a question or choose a task below.</p>
-        <div className="prompt-grid">
-          {ideas.map((p) => (
-            <button
-              className="prompt-card"
-              key={p}
-              onClick={() => setPrompt(p)}
+      <section className="panel ai-chat">
+        <div className="chat-controls">
+          <label>
+            Local model
+            <select
+              aria-label="Local model"
+              value={model}
+              disabled={busy || messages.length > 0}
+              onChange={(e) => setModel(e.target.value)}
             >
-              {p}
-              <Icon name="arrow" size={16} />
-            </button>
+              {!model && <option value="">No model available</option>}
+              {connection?.models.map((m) => (
+                <option key={m.name}>{m.name}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" disabled={busy} onClick={refresh}>
+            Refresh connection
+          </button>
+          <button
+            type="button"
+            disabled={busy || !messages.length}
+            onClick={() => {
+              setMessages([]);
+              setError("");
+            }}
+          >
+            New chat
+          </button>
+        </div>
+        <p role="status">
+          {connection === null
+            ? "Checking Ollama…"
+            : connection.available
+              ? model
+                ? "Connected to local Ollama"
+                : "Ollama is running. Download a local chat model first."
+              : connection.error}
+        </p>
+        <p className="chat-note">
+          This preview uses only text you send here. University records and
+          files are not connected. Chat history is kept in this page until you
+          leave or start a new chat; the last five turns are sent as context.
+        </p>
+        {!messages.length && (
+          <div className="prompt-grid">
+            {ideas.map((p) => (
+              <button
+                type="button"
+                className="prompt-card"
+                key={p}
+                disabled={busy}
+                onClick={() => setPrompt(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        )}
+        <div
+          className="chat-messages"
+          role="log"
+          aria-label="Conversation"
+          aria-live="polite"
+        >
+          {messages.map((m, i) => (
+            <article className={"chat-message " + m.role} key={i}>
+              <strong>{m.role === "user" ? "You" : "UniBridgeAI"}</strong>
+              <div>{m.content}</div>
+              {m.truncated && (
+                <small>
+                  Response reached the length limit. Ask a follow-up to
+                  continue.
+                </small>
+              )}
+            </article>
           ))}
+          {busy && (
+            <p role="status">
+              Generating a reply… The first response may take longer while the
+              model loads.
+            </p>
+          )}
         </div>
-        <label className="prompt-label">
-          Your question
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            maxLength={4000}
-            rows={4}
-            placeholder="Ask about your courses, records or publications…"
-          />
-        </label>
-        <div className="prompt-footer">
-          <span>
-            <span className="status-dot amber" /> Ollama is not connected yet.
-            Your text stays in this page.
-          </span>
-          <button disabled>Send to assistant</button>
-        </div>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <form onSubmit={send}>
+          <label>
+            Your message
+            <textarea
+              aria-label="Your message"
+              value={prompt}
+              disabled={busy}
+              onChange={(e) => setPrompt(e.target.value)}
+              maxLength={4000}
+              rows={4}
+              placeholder="Ask a question or paste a short passage…"
+            />
+          </label>
+          <div className="prompt-footer">
+            <span>{prompt.length}/4000 characters</span>
+            <button
+              disabled={
+                busy || !model || !connection?.available || !prompt.trim()
+              }
+            >
+              {busy ? "Thinking…" : "Send message"}
+            </button>
+          </div>
+        </form>
       </section>
-      <div className="three-features">
-        <article>
-          <Icon name="records" />
-          <h3>Grounded in sources</h3>
-          <p>Planned answers will reference the records they use.</p>
-        </article>
-        <article>
-          <Icon name="profile" />
-          <h3>Your access, respected</h3>
-          <p>Only information authorized for your account.</p>
-        </article>
-        <article>
-          <Icon name="check" />
-          <h3>You review changes</h3>
-          <p>Suggestions will require review before updating records.</p>
-        </article>
-      </div>
     </>
   );
 }

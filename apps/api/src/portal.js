@@ -16,7 +16,7 @@ export function portalRouter(pool) {
       connections: {
         du: "not-connected",
         lms: "not-connected",
-        ai: "not-connected",
+        ai: "local-chat",
       },
     });
   });

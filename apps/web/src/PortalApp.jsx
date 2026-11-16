@@ -238,7 +238,8 @@ function Dashboard({ user, summary, navigate }) {
           <span className="banner-label">UNIBRIDGEAI CAMPUS WORKSPACE</span>
           <h2>A more connected university experience.</h2>
           <p>
-            Your learning, academic records and university services — together.
+            Your learning, academic records and university services
+            — together.
           </p>
           <button onClick={() => navigate("My profile")}>
             Open my profile <Icon name="arrow" size={17} />
@@ -329,20 +330,20 @@ function Dashboard({ user, summary, navigate }) {
             <span className="ai-card-icon">
               <Icon name="ai" size={26} />
             </span>
-            <span className="tag">Coming next</span>
+            <span className="tag">Local AI preview</span>
             <h2>
               Your academic
               <br />
               AI companion.
             </h2>
             <p>
-              Find information, prepare reports and work with your university
-              data.
+              Ask questions, draft text and discuss material you paste into the
+              chat.
             </p>
             <button onClick={() => navigate("AI workspace")}>
               Explore AI workspace <Icon name="arrow" size={16} />
             </button>
-            <small>Ollama integration is the next step.</small>
+            <small>Chat with an installed local model.</small>
           </section>
           <section className="panel connections-card">
             <div className="section-heading">
@@ -728,7 +729,9 @@ export default function PortalApp() {
           )}
           <footer className="workspace-footer">
             <span>UniBridgeAI · University platform prototype</span>
-            <span>Independent platform · AI powered by Ollama is planned</span>
+            <span>
+              Independent platform · Local AI powered by Ollama
+            </span>
           </footer>
         </main>
       </div>

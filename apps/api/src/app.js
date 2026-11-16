@@ -1,3 +1,4 @@
+import { aiRouter } from "./ai.js";
 import express from "express";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -107,6 +108,7 @@ export async function createApp(
     req.user.role === "teacher"
       ? next()
       : res.status(403).json({ error: "Teacher access required" });
+  app.use("/api/ai", aiRouter());
   app.use("/api/faculty", facultyRouter(pool));
   app.use("/api/portal", portalRouter(pool));
   app.get("/api/courses", async (req, res) => {

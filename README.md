@@ -1,6 +1,6 @@
 # UniBridgeAI
 
-An independent digital university platform: learning, academic records, faculty profiles, research and campus services in one role-aware workspace. React + Express + PostgreSQL/pgvector, with a Windows/macOS Tauri shell scaffold. AI will use Ollama; model calls and agents are not connected yet.
+An independent digital university platform: learning, academic records, faculty profiles, research and campus services in one role-aware workspace. React + Express + PostgreSQL/pgvector, with a Windows/macOS Tauri shell scaffold. Local chat is connected through Ollama; document retrieval and research agents are not connected yet.
 
 ## Implemented
 
@@ -22,6 +22,8 @@ npm.cmd run dev:local
 ```
 
 Open http://localhost:5173. Initial local-only account credentials are saved in ignored `data/local-access.txt`. This mode uses persistent embedded PostgreSQL (PGlite + pgvector) in `data/local-preview/`, not the shared PostgreSQL service. It is for development only. Keep real personnel data out of this preview.
+
+An optional ignored `data/local-preview.json` selects another directory under `data`. The API reserves port 3001 before opening PGlite to prevent duplicate preview processes. Each successful startup saves a consistent snapshot under `data/backups/<directory>/` before serving requests. Backups contain private data and must not be committed. See `docs/LOCAL_DATABASE.md` for recovery and backup details, and `docs/OLLAMA.md` for local chat.
 
 ## PostgreSQL server
 
