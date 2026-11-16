@@ -90,7 +90,11 @@ try {
   // Save a consistent restore point before serving requests on each startup.
   await backupLocalDatabase(db, new URL(`backups/${directory}/`, data));
   console.log("Local database snapshot saved under data/backups.");
-  app = await createApp(db, { origin, staticDir });
+  app = await createApp(db, {
+    origin,
+    staticDir,
+    allowRegistration: process.env.UB_ALLOW_REGISTRATION !== "0",
+  });
   console.log(
     `Local embedded PostgreSQL preview on port ${port}. Credentials: ${fileURLToPath(new URL("local-access.txt", data))}. This is not the Docker service.`,
   );

@@ -1364,6 +1364,76 @@ td {
 .signin input {
   background: #f9fbfd;
 }
+.password-field {
+  position: relative;
+  display: block;
+}
+.signin .password-field input {
+  padding-right: 46px;
+}
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  min-height: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #7b8aa0;
+  border: 0;
+  box-shadow: none;
+}
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: #eef2fb;
+  color: var(--blue, #2563eb);
+}
+.link-button {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  min-height: 0;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.link-button:hover {
+  background: none;
+  text-decoration: underline;
+}
+.signin form > .forgot-link {
+  display: block;
+  width: auto;
+  margin: -4px 0 16px auto;
+}
+.switch-mode {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 18px;
+}
+.forgot-help {
+  margin: 26px 0 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #475569;
+}
+.forgot-help code {
+  font-size: 12px;
+  background: #eef2fb;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.forgot-help > button {
+  width: 100%;
+  margin-top: 14px;
+  justify-content: space-between;
+}
 .login-divider {
   display: flex;
   align-items: center;

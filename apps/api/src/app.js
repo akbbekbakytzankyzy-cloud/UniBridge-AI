@@ -22,6 +22,7 @@ export async function createApp(
     scholarlyFetch = fetch,
     ai = {},
     staticDir = null,
+    allowRegistration = false,
   } = {},
 ) {
   const app = express();
@@ -42,6 +43,16 @@ export async function createApp(
       },
     }),
   );
+  async function startSession(res, user) {
+    const token = newToken();
+    await pool.query(
+      "INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '8 hours')",
+      [tokenHash(token), user.id],
+    );
+    res.cookie("ub_session", token, cookieOptions).json({
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
+  }
   app.use(express.json({ limit: "256kb" }));
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
@@ -82,19 +93,52 @@ export async function createApp(
       );
       if (!user || !valid)
         return res.status(401).json({ error: "Invalid email or password" });
-      const token = newToken();
-      await pool.query(
-        "INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '8 hours')",
-        [tokenHash(token), user.id],
+      await startSession(res, user);
+    },
+  );
+  // Self-registration creates student accounts only; teacher accounts are
+  // still provisioned by an administrator (CLI). Off unless enabled.
+  app.get("/api/auth/options", (req, res) =>
+    res.json({ registration: allowRegistration }),
+  );
+  app.post(
+    "/api/auth/register",
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 5,
+      standardHeaders: "draft-8",
+      legacyHeaders: false,
+      message: { error: "Too many sign-up attempts. Try again later." },
+    }),
+    async (req, res) => {
+      if (!allowRegistration)
+        return res
+          .status(403)
+          .json({ error: "Registration is disabled. Ask an administrator." });
+      const input = z
+        .object({
+          name: z.string().trim().min(2).max(120),
+          email: z
+            .email()
+            .max(254)
+            .transform((v) => v.toLowerCase()),
+          password: z
+            .string()
+            .min(12, "Use at least 12 characters for the password")
+            .max(128),
+        })
+        .strict()
+        .parse(req.body);
+      const { rows } = await pool.query(
+        "INSERT INTO users(email,name,role,password_hash) VALUES($1,$2,'student',$3) ON CONFLICT(email) DO NOTHING RETURNING *",
+        [input.email, input.name, await hashPassword(input.password)],
       );
-      res.cookie("ub_session", token, cookieOptions).json({
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      });
+      if (!rows.length)
+        return res
+          .status(409)
+          .json({ error: "An account with this email already exists." });
+      res.status(201);
+      await startSession(res, rows[0]);
     },
   );
   app.use("/api", async (req, res, next) => {

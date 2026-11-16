@@ -48,9 +48,76 @@ function Brand() {
     </div>
   );
 }
+function PasswordField({ label, name, autoComplete, placeholder, minLength }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label>
+      {label}
+      <span className="password-field">
+        <input
+          name={name}
+          type={visible ? "text" : "password"}
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          minLength={minLength}
+          maxLength={128}
+          required
+        />
+        <button
+          type="button"
+          className="password-toggle"
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+          title={visible ? "Hide password" : "Show password"}
+          onClick={() => setVisible((v) => !v)}
+        >
+          <Icon name={visible ? "eyeOff" : "eye"} size={18} />
+        </button>
+      </span>
+    </label>
+  );
+}
 function Login({ onLogin }) {
   const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [mode, setMode] = useState("signin"),
+    [registration, setRegistration] = useState(false);
+  useEffect(() => {
+    api("/auth/options")
+      .then((o) => setRegistration(Boolean(o.registration)))
+      .catch(() => setRegistration(false));
+  }, []);
+  const switchTo = (next) => {
+    setMode(next);
+    setError("");
+  };
+  async function submit(e) {
+    e.preventDefault();
+    const v = Object.fromEntries(new FormData(e.currentTarget));
+    if (mode === "register" && v.password !== v.confirm)
+      return setError("Passwords do not match.");
+    setBusy(true);
+    setError("");
+    try {
+      const data =
+        mode === "register"
+          ? await api("/auth/register", {
+              name: v.name,
+              email: v.email,
+              password: v.password,
+            })
+          : await api("/auth/login", { email: v.email, password: v.password });
+      onLogin(data.user);
+    } catch (err) {
+      setError(
+        err.message === "Invalid input"
+          ? "Check the fields: a valid email and a password of at least 12 characters are required."
+          : err.message,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <main className="login">
       <section className="intro">
@@ -81,51 +148,119 @@ function Login({ onLogin }) {
       </section>
       <section className="signin">
         <p className="eyebrow">WELCOME TO UNIBRIDGEAI</p>
-        <h2>Sign in to your campus</h2>
-        <p>Access your personal academic workspace.</p>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const v = Object.fromEntries(new FormData(e.currentTarget));
-            setBusy(true);
-            setError("");
-            try {
-              onLogin((await api("/auth/login", v)).user);
-            } catch (err) {
-              setError(err.message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <label>
-            Email address
-            <input
-              name="email"
-              type="email"
-              autoComplete="username"
-              placeholder="Your UniBridgeAI account email"
-              required
-            />
-          </label>
-          <label>
-            Password
-            <input
+        <h2>
+          {mode === "register"
+            ? "Create your account"
+            : mode === "forgot"
+              ? "Forgot your password?"
+              : "Sign in to your campus"}
+        </h2>
+        <p>
+          {mode === "register"
+            ? "Student accounts can be created here. Teacher accounts are issued by an administrator."
+            : mode === "forgot"
+              ? "UniBridgeAI does not send password-reset emails yet."
+              : "Access your personal academic workspace."}
+        </p>
+        {mode === "forgot" ? (
+          <div className="forgot-help">
+            <p>
+              Ask the administrator of your UniBridgeAI installation to reset
+              your password.
+            </p>
+            <p>
+              On your own computer (local version): stop the app, run{" "}
+              <code>npm run local:reset-password</code> in the project folder,
+              then start the app again. The new password is shown in the window
+              and saved in <code>data/local-access.txt</code>.
+            </p>
+            <button type="button" onClick={() => switchTo("signin")}>
+              Back to sign in
+              <Icon name="arrow" size={18} />
+            </button>
+          </div>
+        ) : (
+          <form key={mode} onSubmit={submit}>
+            {mode === "register" && (
+              <label>
+                Full name
+                <input
+                  name="name"
+                  autoComplete="name"
+                  placeholder="Your name"
+                  minLength={2}
+                  maxLength={120}
+                  required
+                />
+              </label>
+            )}
+            <label>
+              Email address
+              <input
+                name="email"
+                type="email"
+                autoComplete="username"
+                placeholder="Your UniBridgeAI account email"
+                maxLength={254}
+                required
+              />
+            </label>
+            <PasswordField
+              label="Password"
               name="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Enter your password"
-              required
+              autoComplete={
+                mode === "register" ? "new-password" : "current-password"
+              }
+              placeholder={
+                mode === "register" ? "At least 12 characters" : "Enter your password"
+              }
+              minLength={mode === "register" ? 12 : undefined}
             />
-          </label>
-          <button disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-            <Icon name="arrow" size={18} />
-          </button>
-        </form>
+            {mode === "register" && (
+              <PasswordField
+                label="Repeat password"
+                name="confirm"
+                autoComplete="new-password"
+                placeholder="Repeat the password"
+                minLength={12}
+              />
+            )}
+            {mode === "signin" && (
+              <button
+                type="button"
+                className="link-button forgot-link"
+                onClick={() => switchTo("forgot")}
+              >
+                Forgot password?
+              </button>
+            )}
+            <button disabled={busy}>
+              {busy
+                ? mode === "register"
+                  ? "Creating account…"
+                  : "Signing in…"
+                : mode === "register"
+                  ? "Create account"
+                  : "Sign in"}
+              <Icon name="arrow" size={18} />
+            </button>
+          </form>
+        )}
         {error && (
           <p role="alert" className="error">
             {error}
+          </p>
+        )}
+        {mode !== "forgot" && registration && (
+          <p className="switch-mode">
+            {mode === "register" ? "Already have an account?" : "New to UniBridgeAI?"}{" "}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => switchTo(mode === "register" ? "signin" : "register")}
+            >
+              {mode === "register" ? "Sign in" : "Create an account"}
+            </button>
           </p>
         )}
         <p className="signin-note">
