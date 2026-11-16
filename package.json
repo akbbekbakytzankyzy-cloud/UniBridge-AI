@@ -14,7 +14,8 @@
     "db:migrate": "npm run migrate -w apps/api",
     "user:create": "npm run user:create -w apps/api",
     "desktop:stage": "npm run build && node tools/stage-desktop.mjs",
-    "desktop:build": "npm run desktop:stage && npm run desktop:build -w apps/web"
+    "desktop:build": "npm run desktop:stage && npm run desktop:build -w apps/web",
+    "local:reset-password": "npm run reset-password -w apps/api --"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

@@ -8,7 +8,8 @@
     "migrate": "node src/migrate.js",
     "user:create": "node src/create-user.js",
     "test": "node --test test/*.test.js",
-    "local": "node src/local.js"
+    "local": "node src/local.js",
+    "reset-password": "node src/reset-local-password.js"
   },
   "dependencies": {
     "dotenv": "^17.2.0",

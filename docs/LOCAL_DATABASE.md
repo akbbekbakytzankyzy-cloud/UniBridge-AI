@@ -23,3 +23,7 @@ The standard local launcher reserves port 3001 before opening the database. A se
 Before accepting requests on startup, the launcher saves a consistent PGlite snapshot to `data/backups/<directory>/<timestamp>-<uuid>.tar.gz`, using a temporary file and rename. A test restores a snapshot into a separate PGlite instance and checks that it retains committed data independently of subsequent writes. These are startup restore points, not continuous backups; there is no automatic retention cleanup.
 
 To restore a snapshot, stop the local API, keep the current directory intact, load the tarball with PGlite's `loadDataDir` option into a new empty directory using the compatible package and vector extension, verify rows and relations, close it, then select the new directory in `data/local-preview.json`. Do not overwrite a live database or automatically reset WAL on startup.
+
+## Forgotten local password
+
+Stop the running preview (Ctrl+C in the `npm run dev:local` window), then run `npm run local:reset-password` from the repository root. It sets new random passwords for the two local accounts (or for the e-mails passed after `--`), signs out their sessions, prints the passwords and rewrites `data/local-access.txt`. It refuses to run while port 3001 is in use, so the embedded database is never opened by two processes.
