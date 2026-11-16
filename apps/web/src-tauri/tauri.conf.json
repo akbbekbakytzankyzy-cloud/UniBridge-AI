@@ -59,7 +59,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENEQkE2NDBCRjExRURBRjcKUldUMzJoN3hDMlM2elhKektUbHd0WFlZV2ZPRVRCS0VNanNzb0tSdU92ckpsaVczK1pkRU1NYUMK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJERkU0MzU0NEI2M0E2NUYKUldSZnBtTkxWRVArTGNtWnE3MmlOdVFwVjNKUHhHbGpTZVBTaGwxK2Fvb1gxQkxmODg3WU9hc1gK",
       "endpoints": [
         "https://github.com/akbbekbakytzankyzy-cloud/UniBridge-AI/releases/latest/download/latest.json"
       ],
