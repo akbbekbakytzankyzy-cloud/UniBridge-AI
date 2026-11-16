@@ -5,21 +5,67 @@
   "identifier": "edu.unibridge.desktop",
   "build": {
     "devUrl": "http://localhost:5173",
-    "frontendDist": "https://unibridge.example.invalid"
+    "frontendDist": "loading"
   },
   "app": {
     "windows": [
       {
+        "label": "loading",
         "title": "UniBridgeAI",
-        "width": 1280,
-        "height": 850,
-        "minWidth": 800,
-        "minHeight": 600
+        "url": "index.html",
+        "width": 520,
+        "height": 360,
+        "resizable": false,
+        "center": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     }
   },
-  "bundle": { "active": true, "targets": "all" }
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis",
+      "app",
+      "dmg",
+      "appimage"
+    ],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/node"
+    ],
+    "resources": {
+      "resources/server/": "server/"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English",
+          "Russian"
+        ]
+      }
+    },
+    "shortDescription": "UniBridgeAI digital campus",
+    "category": "Education"
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENEQkE2NDBCRjExRURBRjcKUldUMzJoN3hDMlM2elhKektUbHd0WFlZV2ZPRVRCS0VNanNzb0tSdU92ckpsaVczK1pkRU1NYUMK",
+      "endpoints": [
+        "https://github.com/akbbekbakytzankyzy-cloud/UniBridge-AI/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
 }

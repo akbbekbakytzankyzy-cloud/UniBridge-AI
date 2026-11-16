@@ -1,5 +1,6 @@
 import { aiRouter } from "./ai.js";
 import express from "express";
+import { join } from "node:path";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
@@ -20,6 +21,7 @@ export async function createApp(
     production = false,
     scholarlyFetch = fetch,
     ai = {},
+    staticDir = null,
   } = {},
 ) {
   const app = express();
@@ -31,7 +33,15 @@ export async function createApp(
     path: "/api",
     maxAge: 8 * 60 * 60 * 1000,
   };
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        // Local http://localhost serving: WebKit would otherwise rewrite the
+        // UI's own scripts to https://localhost and show a blank window.
+        directives: { upgradeInsecureRequests: production ? [] : null },
+      },
+    }),
+  );
   app.use(express.json({ limit: "256kb" }));
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
@@ -193,6 +203,16 @@ export async function createApp(
   app.use("/api", (req, res) =>
     res.status(404).json({ error: "Endpoint not found" }),
   );
+  if (staticDir) {
+    // Desktop mode: the API also serves the built web UI, so the window, the
+    // API and the session cookie share one origin.
+    app.use(express.static(staticDir, { index: "index.html", maxAge: 0 }));
+    app.use((req, res, next) =>
+      req.method === "GET" && req.accepts("html")
+        ? res.sendFile(join(staticDir, "index.html"))
+        : next(),
+    );
+  }
   app.use((err, req, res, next) => {
     if (err instanceof z.ZodError)
       return res.status(400).json({

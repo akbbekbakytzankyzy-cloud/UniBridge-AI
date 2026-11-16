@@ -12,6 +12,10 @@ An independent digital university platform: learning, academic records, faculty 
 
 Student accounts have their own dashboard, courses, contact profile and private request drafts. Students cannot access faculty data. Timetable and academic-record readers are prepared; scheduling/grade-entry editors, study plans, registration, advising and library workflows remain future work. DU and LMS are references only, not API dependencies. See `docs/UNIVERSITY_PORTAL.md` for verified scope.
 
+## Download the desktop app
+
+**https://github.com/akbbekbakytzankyzy-cloud/UniBridge-AI/releases/latest** — Windows installer and macOS (Apple Silicon) disk image. The installed app updates itself from new releases. See `docs/DESKTOP.md`.
+
 ## Quick local preview (no Docker)
 
 Requires Node.js 22.12+ or 24 LTS:
@@ -56,7 +60,7 @@ Tests create disposable embedded PostgreSQL databases with pgvector. They exerci
 
 ## Desktop and deployment
 
-Tauri targets Windows/macOS. Install its platform prerequisites, start the development servers and run `npm run desktop:dev -w apps/web`. Native installers are not built yet. Production loads a hosted HTTPS UI; replace the intentionally invalid production URL in `apps/web/src-tauri/tauri.conf.json`. Serve `/api` on that same origin and set APP_ORIGIN and NODE_ENV=production. Database credentials stay on the server.
+The desktop app bundles the local server, embedded database and web UI; installers and signed updates are published by `.github/workflows/release.yml` when a `v*` tag is pushed. See `docs/DESKTOP.md`. A shared server deployment still serves `/api` and the UI on one HTTPS origin with APP_ORIGIN and NODE_ENV=production.
 
 ## Documentation
 

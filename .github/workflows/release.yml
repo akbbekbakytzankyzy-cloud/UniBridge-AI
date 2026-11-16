@@ -1,0 +1,61 @@
+name: Desktop release
+# Push a tag such as v0.2.0 to build signed installers for Windows and macOS,
+# publish them on the Releases page and update latest.json, which installed
+# apps check on start-up to offer the update.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag to build, e.g. v0.2.0"
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: "--bundles nsis"
+          - os: macos-latest # Apple Silicon Macs
+            args: "--bundles app,dmg"
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/web/src-tauri -> target
+      - run: npm ci
+      - run: npm test
+      - run: node tools/set-version.mjs "$TAG"
+        shell: bash
+      - run: npm run build
+      - run: node tools/stage-desktop.mjs
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/web
+          tauriScript: npx tauri
+          args: ${{ matrix.args }}
+          tagName: ${{ env.TAG }}
+          releaseName: "UniBridgeAI ${{ env.TAG }}"
+          releaseBody: "Download the installer for your system below. Installed apps offer this update automatically on start-up."
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
