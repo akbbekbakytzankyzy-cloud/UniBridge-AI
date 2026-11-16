@@ -1688,6 +1688,15 @@ td {
 .chat-controls label {
   min-width: 220px;
 }
+.chat-controls .inline-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.chat-controls .inline-check input {
+  width: auto;
+}
 .chat-note {
   color: #64748b;
   font-size: 13px;

@@ -708,7 +708,7 @@ export default function PortalApp() {
           {page === "Timetable" && <Timetable />}
           {page === "Academic records" && <AcademicRecords user={user} />}
           {page === "Services & requests" && <ServiceRequests />}
-          {page === "AI workspace" && <AIWorkspace />}
+          {page === "AI workspace" && <AIWorkspace teacher={teacher} />}
           {page === "University links" && <UniversityLinks />}
           {[
             "Study plan",

@@ -15,7 +15,12 @@ import {
 
 export async function createApp(
   pool,
-  { origin = "http://localhost:5173", production = false } = {},
+  {
+    origin = "http://localhost:5173",
+    production = false,
+    scholarlyFetch = fetch,
+    ai = {},
+  } = {},
 ) {
   const app = express();
   const dummyHash = await hashPassword(newToken());
@@ -108,8 +113,8 @@ export async function createApp(
     req.user.role === "teacher"
       ? next()
       : res.status(403).json({ error: "Teacher access required" });
-  app.use("/api/ai", aiRouter());
-  app.use("/api/faculty", facultyRouter(pool));
+  app.use("/api/ai", aiRouter({ ...ai, pool }));
+  app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal", portalRouter(pool));
   app.get("/api/courses", async (req, res) => {
     const { rows } = await pool.query(

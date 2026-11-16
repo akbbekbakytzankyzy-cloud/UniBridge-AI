@@ -35,3 +35,18 @@ An optional, Git-ignored `data/local-preview.json` selects a database directory 
 On this machine the original preview has an invalid WAL checkpoint. Both the original and `local-preview-backup-before-restart` were retained. A separate `local-preview-ai-test` database has the existing test accounts but does not contain the old university records. Recovery of those records remains pending.
 
 Recovery completed on 16 November: the active local config now selects `local-preview-restored`. Recovered records were imported into a clean schema, compared row by row and verified through both authenticated roles. The earlier AI-test database is retained but inactive. See LOCAL_DATABASE.md for details and backup limitations.
+
+## Answers from your own records (added 16 November 2026)
+
+Teachers can tick **Answer from my profile and publications** in AI workspace. For each question the API reads the signed-in teacher's own faculty profile and publication list from the database and sends them to the local model as a bounded RECORDS block (about 14,000 characters, `num_ctx` 8192, `temperature` 0, fixed `seed`). Nothing is fine-tuned or cached in the model; the database is the only source of truth, so answers change as soon as records change.
+
+- Included: names, department, position, degree, academic title, ORCID/OpenAlex IDs, education (without diploma numbers), training (without certificate references), awards, and publications with year, venue, DOI, authors, source and verification status.
+- Excluded: phone, hire date, employment fraction, diploma and certificate references.
+- Precomputed counts (total, by year, with DOI, confirmed) are included so the small model does not have to count.
+- The model is told to cite record IDs such as `[P3]` and to say when the profile does not contain the answer. Student accounts cannot use this mode.
+
+## Importing publications from ORCID and OpenAlex
+
+Save an ORCID in **My profile**, then press **Import publications** on the Publications page. The API calls the public ORCID API (`pub.orcid.org`) and OpenAlex (`api.openalex.org`) from the computer running UniBridgeAI; no key is required. Records are matched by DOI, then by source ID, then by normalised title and year. New rows are added as `unverified`; existing rows, including confirmed ones, are never changed. Repeating the import is safe.
+
+Google Scholar, ResearchGate and LinkedIn have no open API and their terms prohibit automated collection, so they are not imported. Add missing items manually. Private documents (KPI folders, IPP reports) are not imported and must not be committed to this public repository.

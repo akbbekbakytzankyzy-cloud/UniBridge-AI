@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
+import { importPublications } from "./scholarly.js";
 export const profileSchema = JSON.parse(
   readFileSync(
     new URL("../../../schema/profile_schema.json", import.meta.url),
@@ -78,8 +79,9 @@ export function snapshotCsv(snapshot) {
   }
   return "\uFEFF" + rows.map((r) => r.map(csvCell).join(";")).join("\r\n");
 }
-export function facultyRouter(pool) {
+export function facultyRouter(pool, { fetcher = fetch } = {}) {
   const router = Router();
+  const importing = new Set();
   router.use((req, res, next) =>
     req.user.role === "teacher"
       ? next()
@@ -139,6 +141,33 @@ export function facultyRouter(pool) {
       [req.user.id, v.title, v.year, v.doi, v.venue, v.authors],
     );
     res.status(201).json({ publication: rows[0] });
+  });
+  router.post("/publications/import", async (req, res) => {
+    z.object({}).strict().parse(req.body ?? {});
+    const { rows } = await pool.query(
+      "SELECT details->>'orcid' AS orcid FROM faculty_profiles WHERE user_id=$1",
+      [req.user.id],
+    );
+    const orcid = rows[0]?.orcid;
+    if (!orcid)
+      return res.status(409).json({
+        error: "Save your ORCID in My profile before importing publications.",
+      });
+    if (importing.has(req.user.id))
+      return res.status(429).json({ error: "An import is already running." });
+    importing.add(req.user.id);
+    try {
+      const result = await importPublications(pool, req.user.id, orcid, fetcher);
+      if (result.errors.length === 2)
+        return res.status(502).json({
+          error:
+            "ORCID and OpenAlex could not be reached. Check the internet connection and try again.",
+          ...result,
+        });
+      res.json(result);
+    } finally {
+      importing.delete(req.user.id);
+    }
   });
   router.delete("/publications/:id", async (req, res) => {
     const { rows } = await pool.query(

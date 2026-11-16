@@ -494,7 +494,8 @@ export function StudentProfile({ user }) {
     </>
   );
 }
-export function AIWorkspace() {
+export function AIWorkspace({ teacher = false }) {
+  const [grounded, setGrounded] = useState(teacher);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState([]);
   const [connection, setConnection] = useState(null);
@@ -519,11 +520,17 @@ export function AIWorkspace() {
   useEffect(() => {
     refresh();
   }, []);
-  const ideas = [
-    "Explain precision, recall and F1 with a simple example.",
-    "Help me draft an academic project introduction.",
-    "What evidence is needed to match a publication to an author?",
-  ];
+  const ideas = grounded
+    ? [
+        "Сколько у меня публикаций и за какие годы?",
+        "List my publications from 2024 with their DOIs.",
+        "Which of my publications are not verified yet?",
+      ]
+    : [
+        "Explain precision, recall and F1 with a simple example.",
+        "Help me draft an academic project introduction.",
+        "What evidence is needed to match a publication to an author?",
+      ];
   async function send(e) {
     e.preventDefault();
     if (busy || !prompt.trim()) return;
@@ -536,11 +543,19 @@ export function AIWorkspace() {
     setBusy(true);
     setError("");
     try {
-      const data = await api("/ai/chat", { model, messages: context });
+      const data = await api("/ai/chat", {
+        model,
+        messages: context,
+        grounding: grounded ? "my_records" : "none",
+      });
       setMessages((previous) => [
         ...previous,
         { role: "user", content: question },
-        { ...data.message, truncated: data.truncated },
+        {
+          ...data.message,
+          truncated: data.truncated,
+          grounding: data.grounding,
+        },
       ]);
       setPrompt("");
     } catch (e) {
@@ -572,6 +587,17 @@ export function AIWorkspace() {
               ))}
             </select>
           </label>
+          {teacher && (
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                checked={grounded}
+                disabled={busy || messages.length > 0}
+                onChange={(e) => setGrounded(e.target.checked)}
+              />
+              Answer from my profile and publications
+            </label>
+          )}
           <button type="button" disabled={busy} onClick={refresh}>
             Refresh connection
           </button>
@@ -596,9 +622,11 @@ export function AIWorkspace() {
               : connection.error}
         </p>
         <p className="chat-note">
-          This preview uses only text you send here. University records and
-          files are not connected. Chat history is kept in this page until you
-          leave or start a new chat; the last five turns are sent as context.
+          {grounded
+            ? "Answers use your saved UniBridgeAI profile and publication list, sent only to the local model on this computer. Check cited records [P1], [PROFILE] before relying on an answer."
+            : "This preview uses only text you send here. University records and files are not connected."}{" "}
+          Chat history is kept in this page until you leave or start a new
+          chat; the last five turns are sent as context.
         </p>
         {!messages.length && (
           <div className="prompt-grid">
@@ -625,6 +653,12 @@ export function AIWorkspace() {
             <article className={"chat-message " + m.role} key={i}>
               <strong>{m.role === "user" ? "You" : "UniBridgeAI"}</strong>
               <div>{m.content}</div>
+              {m.grounding && (
+                <small>
+                  Based on your records: {m.grounding.included} of{" "}
+                  {m.grounding.publications} publications included.
+                </small>
+              )}
               {m.truncated && (
                 <small>
                   Response reached the length limit. Ask a follow-up to

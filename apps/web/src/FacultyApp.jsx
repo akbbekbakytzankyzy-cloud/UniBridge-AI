@@ -222,6 +222,33 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange }) {
                 authorship.
               </p>
               <section className="panel">
+                <h2>Import from ORCID and OpenAlex</h2>
+                <p className="muted">
+                  Uses the ORCID saved in My profile. Imported records are
+                  added as unverified; existing records are never changed.
+                </p>
+                <button
+                  type="button"
+                  disabled={busy || dirty}
+                  onClick={() =>
+                    run(async () => {
+                      const r = await api("/faculty/publications/import", {});
+                      setPublications(
+                        (await api("/faculty/publications")).publications,
+                      );
+                      setNotice(
+                        `Imported ${r.added} new record(s); ${r.skipped} already present. Found: OpenAlex ${r.fetched.openalex ?? 0}, ORCID ${r.fetched.orcid ?? 0}.` +
+                          (r.errors.length
+                            ? " Not reached: " + r.errors.join("; ")
+                            : ""),
+                      );
+                    })
+                  }
+                >
+                  Import publications
+                </button>
+              </section>
+              <section className="panel">
                 <h2>Add a publication</h2>
                 <form
                   onSubmit={submit(async (v, f) => {
