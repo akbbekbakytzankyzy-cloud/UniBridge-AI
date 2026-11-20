@@ -28,6 +28,12 @@ page by opening it through UniBridgeAI again. SSO/MFA redirects and platform pag
 layouts need testing on real accounts. This is manual page import, not continuous
 account synchronization.
 
+An optional Chromium extension is available in `browser-extension/` as a file-based
+alternative. It displays the same review-before-capture flow, saves a JSON file
+locally, and does not send data over the network. Import that file from the
+Browser Imports section in UniBridgeAI; the snapshot is still pending until the
+user accepts it.
+
 ## Completing the integration
 
 Ask AITU IT for an approved external application registration and documented data

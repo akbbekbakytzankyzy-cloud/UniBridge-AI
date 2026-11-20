@@ -101,6 +101,28 @@ export function browserImportsRouter(pool) {
     );
     res.json({ imports: rows });
   });
+  router.post("/file", async (req, res) => {
+    const input = z
+      .object({
+        version: z.literal(1),
+        sourceUrl: z.string().max(2000),
+        capturedAt: z.iso.datetime().optional(),
+        content: z.string().trim().min(1).max(30000),
+      })
+      .strict()
+      .parse(req.body);
+    let source;
+    try {
+      source = cleanSource(input.sourceUrl);
+    } catch {
+      return res.status(400).json({ error: "Unsupported source" });
+    }
+    const { rows } = await pool.query(
+      "INSERT INTO browser_imports(user_id,source_url,content) VALUES($1,$2,$3) RETURNING id",
+      [req.user.id, source, input.content],
+    );
+    res.status(201).json({ id: rows[0].id, status: "pending_review" });
+  });
   router.post("/:id/accept", async (req, res) => {
     const { rows } = await pool.query(
       "UPDATE browser_imports SET status='accepted' WHERE id=$1 AND user_id=$2 RETURNING id",

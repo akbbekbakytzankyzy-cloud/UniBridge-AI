@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "UniBridgeAI Page Import",
+  "version": "1.0.0",
+  "description": "Review and export a page snapshot for manual import into UniBridgeAI.",
+  "permissions": ["downloads"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://du.astanait.edu.kz/*",
+        "https://my-du.astanait.edu.kz/*",
+        "https://lms.astanait.edu.kz/*",
+        "https://linkedin.com/*",
+        "https://www.linkedin.com/*",
+        "https://scopus.com/*",
+        "https://www.scopus.com/*",
+        "https://researchgate.net/*",
+        "https://www.researchgate.net/*",
+        "https://orcid.org/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

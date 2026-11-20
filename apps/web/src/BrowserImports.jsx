@@ -143,6 +143,16 @@ export default function BrowserImports() {
       await invoke("open_university_browser", { url, code });
     });
   }
+  async function importFile(file, input) {
+    if (!file) return;
+    await run(async () => {
+      if (file.size > 1024 * 1024) throw new Error("Import file is too large");
+      const snapshot = JSON.parse(await file.text());
+      await api("/browser-imports/file", snapshot);
+      await load();
+      input.value = "";
+    });
+  }
   return (
     <section className="panel">
       <h2>Import through your browser</h2>
@@ -158,6 +168,23 @@ export default function BrowserImports() {
           desktop app. This web preview cannot inspect other tabs.
         </p>
       )}
+      <details>
+        <summary>Use the optional browser extension</summary>
+        <p>
+          The extension exports a reviewed page snapshot as a JSON file. Choose
+          it here to add it to your pending imports. The extension does not sign
+          in for you or send the page directly to a server.
+        </p>
+        <label>
+          Import a UniBridgeAI snapshot file
+          <input
+            type="file"
+            accept="application/json,.json"
+            disabled={busy}
+            onChange={(event) => importFile(event.target.files?.[0], event.target)}
+          />
+        </label>
+      </details>
       {desktop && (
         <div className="actions">
           {[
