@@ -200,7 +200,7 @@ test("publication import and record-grounded chat", async (t) => {
   assert.doesNotMatch(context, /\+7 700|hire_date|employment_fraction/);
   assert.equal(sent.options.temperature, 0);
   assert.equal(sent.options.num_ctx, 8192);
-  const plain = await (await ask(teacher)).json();
+  const plain = await (await ask(teacher, "none")).json();
   assert.equal(plain.grounding, null);
   assert.doesNotMatch(chats.at(-1).messages[0].content, /RECORDS/);
 });

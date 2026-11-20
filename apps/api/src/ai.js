@@ -2,6 +2,7 @@ import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { roleModels, hasLocalModel } from "./ai-models.js";
+import { runAssistantWithTools } from "./assistant-tools.js";
 
 const input = z
   .object({
@@ -17,7 +18,7 @@ const input = z
       )
       .min(1)
       .max(12),
-    grounding: z.enum(["none", "my_records"]).optional(),
+    grounding: z.enum(["none", "my_records", "tools"]).optional(),
     cloudConsent: z.boolean().optional(),
     sourceId: z.uuid().optional(),
   })
@@ -116,6 +117,7 @@ export function aiRouter({
   baseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
   timeoutMs = 120000,
   pool,
+  aiClient = null,
 } = {}) {
   if (!["ollama", "openrouter"].includes(provider))
     throw new Error("Unsupported AI provider");
@@ -228,6 +230,33 @@ export function aiRouter({
             error: "Choose a configured model and refresh the connection.",
           });
         cloud = chosen.provider === "cloud";
+        // Local chat uses the read-only tools; cloud chat keeps the direct path.
+        if (!cloud && v.grounding === "tools" && pool && req.user && aiClient) {
+          const question = v.messages.at(-1).content;
+          const history = v.messages.slice(0, -1);
+          try {
+            const out = await runAssistantWithTools({
+              ai: aiClient,
+              model: v.model,
+              pool,
+              userId: req.user.id,
+              question,
+              history,
+            });
+            return res.json({
+              message: { role: "assistant", content: out.answer },
+              model: v.model,
+              provider: "ollama",
+              truncated: false,
+              grounding: null,
+              toolsUsed: out.tools,
+            });
+          } catch (error) {
+            return res.status(503).json({
+              error: error.message || "The local assistant could not answer.",
+            });
+          }
+        }
         let records = null;
         let sourceText = null;
         if (v.sourceId) {

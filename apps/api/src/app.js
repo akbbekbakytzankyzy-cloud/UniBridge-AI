@@ -186,7 +186,7 @@ export async function createApp(
       ? next()
       : res.status(403).json({ error: "Teacher access required" });
   const aiClient = ai.client || createAIClient({ fetcher: ai.fetcher });
-  app.use("/api/ai", aiRouter({ ...ai, pool }));
+  app.use("/api/ai", aiRouter({ ...ai, pool, aiClient }));
   app.use("/api/university-accounts", universityAccountsRouter(pool));
   app.use("/api/extraction", extractionRouter({ pool, ai: aiClient }));
   app.use("/api/autofill", autofillRouter({ pool, ai: aiClient }));

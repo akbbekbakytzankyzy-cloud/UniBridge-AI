@@ -570,7 +570,14 @@ export function AIWorkspace({ teacher = false }) {
       const data = await api("/ai/chat", {
         model: activeModel,
         messages: context,
-        grounding: grounded ? "my_records" : "none",
+        // Local chat uses the read-only tools unless it answers from records.
+        grounding: cloud
+          ? grounded
+            ? "my_records"
+            : "none"
+          : grounded
+            ? "my_records"
+            : "tools",
         cloudConsent,
       });
       setMessages((previous) => [
@@ -580,6 +587,7 @@ export function AIWorkspace({ teacher = false }) {
           ...data.message,
           truncated: data.truncated,
           grounding: data.grounding,
+          toolsUsed: data.toolsUsed,
         },
       ]);
       setPrompt("");
@@ -763,6 +771,11 @@ export function AIWorkspace({ teacher = false }) {
                 <small>
                   Based on your records: {m.grounding.included} of{" "}
                   {m.grounding.publications} publications included.
+                </small>
+              )}
+              {m.toolsUsed?.length > 0 && (
+                <small>
+                  Looked up in: {m.toolsUsed.join(", ")} (read-only).
                 </small>
               )}
               {m.truncated && (
