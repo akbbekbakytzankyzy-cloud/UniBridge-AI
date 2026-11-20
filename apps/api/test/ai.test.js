@@ -36,7 +36,7 @@ test("local AI validates conversation, restricts models and forwards bounded con
       body: JSON.stringify(body),
     });
   assert.deepEqual((await (await fetch(base + "/status")).json()).models, [
-    { name: "qwen3:1.7b" },
+    { name: "qwen3:1.7b", provider: "local" },
   ]);
   assert.equal(
     (

@@ -16,6 +16,7 @@ test("OpenRouter restricts model, requires records consent, bounds output and hi
       provider: "openrouter",
       apiKey: "test-secret",
       cloudModel: "anthropic/claude-haiku-5.5",
+      localEnabled: false,
       pool: { query: async () => ({ rows: [] }) },
       fetcher: async (url, opts) => {
         calls++;
@@ -26,6 +27,7 @@ test("OpenRouter restricts model, requires records consent, bounds output and hi
         assert.equal(body.max_tokens, 1024);
         assert.equal(body.model, "anthropic/claude-haiku-5.5");
         assert.equal(body.provider.data_collection, "deny");
+        assert.equal(body.temperature, undefined);
         if (failure)
           return Response.json(
             { error: { message: "test-secret" } },
@@ -79,7 +81,7 @@ test("imported AI context requires consent and an accepted source belonging to t
   const app = express();
   app.use(express.json());
   app.use((req, res, next) => { req.user = { id: "owner", role: "student" }; next(); });
-  app.use(aiRouter({ provider: "openrouter", apiKey: "test-key", cloudModel: "test/model",
+  app.use(aiRouter({ provider: "openrouter", apiKey: "test-key", cloudModel: "test/model", localEnabled: false,
     pool: { query: async (sql, args) => {
       queries++;
       assert.match(sql, /user_id=\$2 AND status='accepted'/);
@@ -105,4 +107,51 @@ test("imported AI context requires consent and an accepted source belonging to t
   found = true;
   assert.equal((await send(true)).status,200);
   assert.equal(calls,1);
+});
+
+test("local and cloud chat models are offered together and roles report readiness", async (t) => {
+  const hits = [];
+  const app = express();
+  app.use(express.json());
+  app.use((req, res, next) => { req.user = { id: "u", role: "teacher" }; next(); });
+  app.use(aiRouter({
+    provider: "ollama",
+    apiKey: "k",
+    fetcher: async (url, opts) => {
+      hits.push(url.href);
+      if (url.pathname === "/api/tags")
+        return Response.json({ models: [{ name: "qwen3:4b" }, { name: "bge-m3:latest" }] });
+      if (url.hostname === "openrouter.ai")
+        return Response.json({ choices: [{ message: { content: "cloud" }, finish_reason: "stop" }] });
+      assert.equal(JSON.parse(opts.body).model, "qwen3:4b");
+      return Response.json({ done: true, message: { content: "local" }, done_reason: "stop" });
+    },
+  }));
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((r) => server.once("listening", r));
+  t.after(() => new Promise((r) => server.close(r)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const status = await (await fetch(base + "/status")).json();
+  assert.equal(status.defaultProvider, "local");
+  assert.deepEqual(status.models.map((m) => [m.name, m.provider]), [
+    ["qwen3:4b", "local"], ["bge-m3:latest", "local"], ["anthropic/claude-sonnet-5.5", "cloud"],
+  ]);
+  const role = (id) => status.roles.find((r) => r.id === id);
+  assert.equal(role("assistant").cloud, "anthropic/claude-sonnet-5.5");
+  assert.equal(role("integration").cloud, "anthropic/claude-opus-5.5");
+  assert.equal(role("extraction").cloud, "anthropic/claude-haiku-5.5");
+  assert.equal(role("autofill").local, "qwen3:4b");
+  assert.equal(role("autofill").cloud, null);
+  assert.equal(role("autofill").localReady, true);
+  assert.equal(role("embeddings").localReady, true);
+  assert.equal(role("integration").cloudReady, true);
+  const ask = (model) => fetch(base + "/chat", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }] }),
+  }).then((r) => r.json());
+  const local = await ask("qwen3:4b");
+  assert.deepEqual([local.message.content, local.provider], ["local", "ollama"]);
+  const cloud = await ask("anthropic/claude-sonnet-5.5");
+  assert.deepEqual([cloud.message.content, cloud.provider], ["cloud", "openrouter"]);
+  assert.ok(hits.some((h) => h.startsWith("https://openrouter.ai/")));
 });

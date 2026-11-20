@@ -68,7 +68,12 @@ function Source({ item, refresh }) {
             e.preventDefault();
             act(async () => {
               const status = await api("/ai/status");
-              const model = status.models?.[0]?.name;
+              const preferred =
+                status.defaultProvider === "cloud" ? "cloud" : "local";
+              const model = (
+                status.models?.find((m) => m.provider === preferred) ||
+                status.models?.[0]
+              )?.name;
               if (!model) throw new Error("No AI model configured");
               const result = await api("/ai/chat", {
                 model,

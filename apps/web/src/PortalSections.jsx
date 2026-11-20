@@ -500,20 +500,42 @@ export function AIWorkspace({ teacher = false }) {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState([]);
   const [connection, setConnection] = useState(null);
-  const cloud = connection?.provider === "openrouter";
+  const [mode, setMode] = useState("local");
+  const cloud = mode === "cloud";
+  const localModels = (connection?.models || []).filter(
+    (m) => m.provider === "local",
+  );
   const [model, setModel] = useState("");
+  const activeModel = cloud
+    ? connection?.cloud?.available
+      ? connection.cloud.model
+      : ""
+    : model;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const refresh = async () => {
     try {
       const data = await api("/ai/status");
       setConnection(data);
+      const locals = data.models.filter((m) => m.provider === "local");
       setModel((current) =>
-        data.models.some((m) => m.name === current)
+        locals.some((m) => m.name === current)
           ? current
-          : data.models.find((m) => m.name === "qwen3:1.7b")?.name ||
-            data.models[0]?.name ||
+          : locals.find((m) => m.name === "qwen3:4b")?.name ||
+            locals.find((m) => m.name === "qwen3:1.7b")?.name ||
+            locals[0]?.name ||
             "",
+      );
+      setMode((current) =>
+        messages.length
+          ? current
+          : data.defaultProvider === "cloud" && data.cloud?.available
+            ? "cloud"
+            : data.local?.available
+              ? "local"
+              : data.cloud?.available
+                ? "cloud"
+                : "local",
       );
     } catch (e) {
       setError(e.message);
@@ -546,7 +568,7 @@ export function AIWorkspace({ teacher = false }) {
     setError("");
     try {
       const data = await api("/ai/chat", {
-        model,
+        model: activeModel,
         messages: context,
         grounding: grounded ? "my_records" : "none",
         cloudConsent,
@@ -575,21 +597,53 @@ export function AIWorkspace({ teacher = false }) {
         description="Ask your AI assistant in English, Russian or Kazakh."
       />
       <section className="panel ai-chat">
-        <div className="chat-controls">
-          <label>
-            AI model
-            <select
-              aria-label="AI model"
-              value={model}
+        <div
+          className="ai-mode"
+          role="radiogroup"
+          aria-label="Where the assistant runs"
+        >
+          {[
+            ["local", "Local", "Ollama on this computer"],
+            [
+              "cloud",
+              "Cloud",
+              connection?.cloud?.model || "Claude via OpenRouter",
+            ],
+          ].map(([id, label, hint]) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={mode === id}
+              className={mode === id ? "active" : ""}
               disabled={busy || messages.length > 0}
-              onChange={(e) => setModel(e.target.value)}
+              onClick={() => {
+                setMode(id);
+                setCloudConsent(false);
+              }}
             >
-              {!model && <option value="">No model available</option>}
-              {connection?.models.map((m) => (
-                <option key={m.name}>{m.name}</option>
-              ))}
-            </select>
-          </label>
+              <strong>{label}</strong>
+              <small>{hint}</small>
+            </button>
+          ))}
+        </div>
+        <div className="chat-controls">
+          {!cloud && (
+            <label>
+              Local model
+              <select
+                aria-label="Local model"
+                value={model}
+                disabled={busy || messages.length > 0}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                {!model && <option value="">No local model available</option>}
+                {localModels.map((m) => (
+                  <option key={m.name}>{m.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
           {teacher && (
             <label className="inline-check">
               <input
@@ -619,13 +673,15 @@ export function AIWorkspace({ teacher = false }) {
         <p role="status">
           {connection === null
             ? "Checking AI configuration…"
-            : connection.available
-              ? model
-                ? cloud
-                  ? "OpenRouter configured — Claude replies use the cloud"
-                  : "Connected to local Ollama"
-                : "Ollama is running. Download a local chat model first."
-              : connection.error}
+            : cloud
+              ? connection.cloud?.available
+                ? `Cloud: ${connection.cloud.model} via OpenRouter`
+                : connection.cloud?.error
+              : connection.local?.available
+                ? model
+                  ? `Local: ${model} via Ollama`
+                  : "Ollama is running. Download a local chat model first."
+                : connection.local?.error}
         </p>
         <p className="chat-note">
           {cloud
@@ -636,6 +692,36 @@ export function AIWorkspace({ teacher = false }) {
           Chat history is kept in this page until you leave or start a new chat;
           the last five turns are sent as context.
         </p>
+        {connection?.roles && (
+          <details className="ai-roles">
+            <summary>AI roles and models</summary>
+            <ul>
+              {connection.roles.map((r) => (
+                <li key={r.id}>
+                  <strong>{r.title}</strong>
+                  <span>{r.task}</span>
+                  <span className="ai-role-models">
+                    {r.cloud && (
+                      <em className={r.cloudReady ? "ready" : "missing"}>
+                        Cloud: {r.cloud}
+                        {r.cloudReady ? "" : " (key not configured)"}
+                      </em>
+                    )}
+                    {r.local && (
+                      <em className={r.localReady ? "ready" : "missing"}>
+                        Local: {r.local}
+                        {r.localFallback ? ` or ${r.localFallback}` : ""}
+                        {r.localReady || r.id === "assistant"
+                          ? ""
+                          : ` (run: ollama pull ${r.local})`}
+                      </em>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         {cloud && grounded && (
           <label className="inline-check">
             <input
@@ -717,8 +803,7 @@ export function AIWorkspace({ teacher = false }) {
             <button
               disabled={
                 busy ||
-                !model ||
-                !connection?.available ||
+                !activeModel ||
                 !prompt.trim() ||
                 (cloud && grounded && !cloudConsent)
               }

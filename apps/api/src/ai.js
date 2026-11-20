@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
+import { roleModels, hasLocalModel } from "./ai-models.js";
 
 const input = z
   .object({
@@ -106,16 +107,18 @@ export async function buildRecordsContext(pool, user) {
 
 export function aiRouter({
   fetcher = fetch,
+  // Which option the chat preselects; users can switch per conversation.
   provider = process.env.AI_PROVIDER || "ollama",
   apiKey = process.env.OPENROUTER_API_KEY || "",
-  cloudModel = process.env.OPENROUTER_MODEL || "anthropic/claude-haiku-5.5",
+  roles = roleModels(),
+  cloudModel = roles.assistant.cloud,
+  localEnabled = true,
   baseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
   timeoutMs = 120000,
   pool,
 } = {}) {
   if (!["ollama", "openrouter"].includes(provider))
     throw new Error("Unsupported AI provider");
-  const cloud = provider === "openrouter";
   const url = new URL(baseUrl);
   if (
     url.protocol !== "http:" ||
@@ -124,11 +127,8 @@ export function aiRouter({
     throw new Error("Ollama must use a loopback HTTP address");
   const router = Router();
   let busy = false;
-  async function models() {
-    if (cloud) {
-      if (!apiKey) throw new Error("Missing server API key");
-      return [{ name: cloudModel }];
-    }
+  async function localModels() {
+    if (!localEnabled) throw new Error("Local models disabled");
     const response = await fetcher(new URL("/api/tags", url), {
       signal: AbortSignal.timeout(4000),
       redirect: "error",
@@ -141,24 +141,57 @@ export function aiRouter({
       )
       .map((m) => ({ name: m.name, size: m.size }));
   }
+  // Local and cloud chat models are offered side by side.
+  async function models() {
+    const local = await localModels().catch(() => null);
+    return {
+      local,
+      list: [
+        ...(local || []).map((m) => ({ ...m, provider: "local" })),
+        ...(apiKey ? [{ name: cloudModel, provider: "cloud" }] : []),
+      ],
+    };
+  }
   router.get("/status", async (req, res) => {
-    try {
-      res.json({
-        available: true,
-        provider,
-        models: await models(),
-        status: cloud ? "configured" : "connected",
-      });
-    } catch {
-      res.json({
-        available: false,
-        provider,
-        models: [],
-        error: cloud
-          ? "Configure OPENROUTER_API_KEY on the server."
+    const { local, list } = await models();
+    const installed = local || [];
+    const roleStatus = Object.entries(roles).map(([id, r]) => ({
+      id,
+      title: r.title,
+      task: r.task,
+      cloud: r.cloud || null,
+      local: r.local || null,
+      localFallback: r.localFallback || null,
+      cloudReady: Boolean(r.cloud && apiKey),
+      localReady:
+        id === "assistant"
+          ? installed.length > 0
+          : hasLocalModel(installed, r.local) ||
+            hasLocalModel(installed, r.localFallback),
+    }));
+    res.json({
+      available: list.length > 0,
+      provider,
+      defaultProvider: provider === "openrouter" ? "cloud" : "local",
+      models: list,
+      local: {
+        available: Boolean(local),
+        error: local
+          ? undefined
           : "Start Ollama on this computer, then refresh the connection.",
-      });
-    }
+      },
+      cloud: {
+        available: Boolean(apiKey),
+        model: cloudModel,
+        status: apiKey ? "configured" : "not configured",
+        error: apiKey ? undefined : "Configure OPENROUTER_API_KEY on the server.",
+      },
+      roles: roleStatus,
+      error:
+        list.length > 0
+          ? undefined
+          : "No AI is available: start Ollama or configure OpenRouter on the server.",
+    });
   });
   router.post(
     "/chat",
@@ -187,11 +220,14 @@ export function aiRouter({
         if (!res.writableEnded) controller.abort();
       };
       res.on("close", disconnected);
+      let cloud = false;
       try {
-        if (!(await models()).some((m) => m.name === v.model))
+        const chosen = (await models()).list.find((m) => m.name === v.model);
+        if (!chosen)
           return res.status(400).json({
             error: "Choose a configured model and refresh the connection.",
           });
+        cloud = chosen.provider === "cloud";
         let records = null;
         let sourceText = null;
         if (v.sourceId) {
@@ -264,7 +300,7 @@ export function aiRouter({
                     messages,
                     stream: false,
                     max_tokens: 1024,
-                    temperature: records ? 0 : 0.2,
+                    // No temperature: Claude 5.5 models reject non-default sampling values.
                     provider: { data_collection: "deny" },
                   }
                 : {
@@ -317,7 +353,7 @@ export function aiRouter({
         res.json({
           message: { role: "assistant", content: data.message.content },
           model: v.model,
-          provider,
+          provider: cloud ? "openrouter" : "ollama",
           truncated: data.done_reason === "length",
           grounding: records
             ? { publications: records.publications, included: records.included }
