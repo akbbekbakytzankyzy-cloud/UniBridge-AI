@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import BrowserImports, { DraftsToConfirm } from "./BrowserImports.jsx";
+import FieldMapping from "./FieldMapping.jsx";
 
 export default function UniversityAccounts() {
   const [data, setData] = useState(null);
@@ -53,6 +54,7 @@ export default function UniversityAccounts() {
       {notice && <p role="status">{notice}</p>}
       <BrowserImports />
       <DraftsToConfirm />
+      <FieldMapping />
       {!data && !error && <p>Loading accounts…</p>}
       {data?.providers.map((p) => {
         const account = data.accounts.find((a) => a.provider === p.id);

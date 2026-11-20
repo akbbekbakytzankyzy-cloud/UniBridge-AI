@@ -13,6 +13,7 @@ import { facultyRouter } from "./faculty.js";
 import { portalRouter } from "./portal.js";
 import { extractionRouter } from "./extraction.js";
 import { autofillRouter } from "./autofill.js";
+import { fieldMappingRouter } from "./field-mapping.js";
 import { createAIClient } from "./ai-client.js";
 import {
   newToken,
@@ -190,6 +191,7 @@ export async function createApp(
   app.use("/api/university-accounts", universityAccountsRouter(pool));
   app.use("/api/extraction", extractionRouter({ pool, ai: aiClient }));
   app.use("/api/autofill", autofillRouter({ pool, ai: aiClient }));
+  app.use("/api/field-mapping", fieldMappingRouter({ pool, ai: aiClient }));
   app.use("/api/browser-imports", browserImportsRouter(pool));
   app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal", portalRouter(pool));
