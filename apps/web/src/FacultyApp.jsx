@@ -116,6 +116,13 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange }) {
               <p className="muted">
                 Work email: {user.email}. Fields marked * are required.
               </p>
+              <ProfileSuggestions
+                profile={profile}
+                busy={busy}
+                run={run}
+                onApplied={(p) => setProfile(p)}
+                setNotice={setNotice}
+              />
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -417,5 +424,65 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange }) {
         </>
       )}
     </div>
+  );
+}
+
+function ProfileSuggestions({ profile, busy, run, onApplied, setNotice }) {
+  const [items, setItems] = useState([]);
+  const [chosen, setChosen] = useState({});
+  const [info, setInfo] = useState("");
+  const suggest = () =>
+    run(async () => {
+      const r = await api("/autofill/profile/suggest", {});
+      setItems(r.suggestions || []);
+      setChosen(Object.fromEntries((r.suggestions || []).map((s) => [s.field, true])));
+      setInfo(
+        (r.suggestions || []).length
+          ? "Suggestions come from your confirmed data only. Tick the ones to fill."
+          : r.note || "No suggestions found in your confirmed data.",
+      );
+    });
+  const apply = () =>
+    run(async () => {
+      const values = Object.fromEntries(
+        items.filter((s) => chosen[s.field]).map((s) => [s.field, s.value]),
+      );
+      if (!Object.keys(values).length) return;
+      const r = await api(
+        "/autofill/profile/apply",
+        { revision: profile.revision, values },
+      );
+      onApplied({ ...profile, revision: r.revision, ...Object.fromEntries(Object.entries(values)) });
+      setItems([]);
+      setNotice(`Filled ${r.applied.length} field(s) from your confirmed data. Review and save the profile.`);
+    });
+  return (
+    <section className="panel">
+      <h2>Fill empty fields from my data</h2>
+      <p className="muted">
+        A local AI model suggests values for empty fields using only what you confirmed
+        (ORCID, OpenAlex, confirmed publications and records). Filled fields are never changed.
+      </p>
+      <button type="button" disabled={busy} onClick={suggest}>
+        Suggest values
+      </button>
+      {info && <p role="status">{info}</p>}
+      {items.map((s) => (
+        <label key={s.field} className="inline-check">
+          <input
+            type="checkbox"
+            checked={!!chosen[s.field]}
+            disabled={busy}
+            onChange={(e) => setChosen((c) => ({ ...c, [s.field]: e.target.checked }))}
+          />{" "}
+          <strong>{s.field}</strong>: {s.value} <small>(source {s.source}: {s.reason})</small>
+        </label>
+      ))}
+      {items.length > 0 && (
+        <button type="button" disabled={busy} onClick={apply}>
+          Fill selected fields
+        </button>
+      )}
+    </section>
   );
 }
