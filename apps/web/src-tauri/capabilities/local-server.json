@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "unibridge-local-server",
+  "description": "Allows the local UniBridgeAI interface to open a restricted university webview.",
+  "windows": ["main"],
+  "remote": {
+    "urls": [
+      "http://localhost:3417/*",
+      "http://127.0.0.1:3417/*",
+      "http://localhost:5173/*",
+      "http://127.0.0.1:5173/*"
+    ]
+  },
+  "permissions": ["allow-open-university-browser"]
+}

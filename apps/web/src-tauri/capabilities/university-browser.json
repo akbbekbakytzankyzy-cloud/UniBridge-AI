@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "university-browser-capture",
+  "description": "Allows only a user-confirmed page snapshot to be sent from supported university and research pages.",
+  "windows": ["university-source"],
+  "remote": {
+    "urls": [
+      "https://du.astanait.edu.kz/*",
+      "https://lms.astanait.edu.kz/*",
+      "https://my-du.astanait.edu.kz/*",
+      "https://linkedin.com/*",
+      "https://www.linkedin.com/*",
+      "https://scopus.com/*",
+      "https://www.scopus.com/*",
+      "https://researchgate.net/*",
+      "https://www.researchgate.net/*",
+      "https://orcid.org/*"
+    ]
+  },
+  "permissions": ["allow-capture-university-page"]
+}

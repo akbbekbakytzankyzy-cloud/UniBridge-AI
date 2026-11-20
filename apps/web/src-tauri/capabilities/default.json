@@ -1,10 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The window loads only the bundled loading page and the local UniBridgeAI server; no plugin commands are exposed to page scripts.",
-  "windows": [
-    "loading",
-    "main"
-  ],
-  "permissions": []
+  "description": "The local UniBridgeAI interface may open a restricted university browser window.",
+  "windows": ["main"],
+  "permissions": ["allow-open-university-browser"]
 }

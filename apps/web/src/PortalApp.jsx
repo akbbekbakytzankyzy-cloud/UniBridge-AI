@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import { Icon } from "./icons.jsx";
 import FacultyWorkspace from "./FacultyApp.jsx";
 import Courses from "./Courses.jsx";
+import UniversityAccounts from "./UniversityAccounts.jsx";
 import {
   AcademicRecords,
   AIWorkspace,
@@ -465,7 +466,7 @@ function Dashboard({ user, summary, navigate }) {
             <span className="ai-card-icon">
               <Icon name="ai" size={26} />
             </span>
-            <span className="tag">Local AI preview</span>
+            <span className="tag">AI preview</span>
             <h2>
               Your academic
               <br />
@@ -478,7 +479,7 @@ function Dashboard({ user, summary, navigate }) {
             <button onClick={() => navigate("AI workspace")}>
               Explore AI workspace <Icon name="arrow" size={16} />
             </button>
-            <small>Chat with an installed local model.</small>
+            <small>Chat with the configured AI model.</small>
           </section>
           <section className="panel connections-card">
             <div className="section-heading">
@@ -665,6 +666,7 @@ export default function PortalApp() {
       title: teacher ? "FACULTY" : "PERSONAL",
       items: [
         ["My profile", "profile"],
+        ["University accounts", "link"],
         ...(teacher
           ? [
               ["Publications", "research"],
@@ -845,6 +847,7 @@ export default function PortalApp() {
           {page === "Services & requests" && <ServiceRequests />}
           {page === "AI workspace" && <AIWorkspace teacher={teacher} />}
           {page === "University links" && <UniversityLinks />}
+          {page === "University accounts" && <UniversityAccounts />}
           {[
             "Study plan",
             "Registration",
@@ -865,7 +868,7 @@ export default function PortalApp() {
           <footer className="workspace-footer">
             <span>UniBridgeAI · University platform prototype</span>
             <span>
-              Independent platform · Local AI powered by Ollama
+              Independent platform · AI assistance
             </span>
           </footer>
         </main>

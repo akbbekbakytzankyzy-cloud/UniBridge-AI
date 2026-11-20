@@ -1,4 +1,9 @@
 import { aiRouter } from "./ai.js";
+import { universityAccountsRouter } from "./university-accounts.js";
+import {
+  browserCaptureRouter,
+  browserImportsRouter,
+} from "./browser-imports.js";
 import express from "express";
 import { join } from "node:path";
 import helmet from "helmet";
@@ -23,6 +28,7 @@ export async function createApp(
     ai = {},
     staticDir = null,
     allowRegistration = false,
+    nativeCaptureToken = "",
   } = {},
 ) {
   const app = express();
@@ -50,10 +56,19 @@ export async function createApp(
       [tokenHash(token), user.id],
     );
     res.cookie("ub_session", token, cookieOptions).json({
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
   }
   app.use(express.json({ limit: "256kb" }));
+  app.use(
+    "/api/browser-import",
+    browserCaptureRouter(pool, nativeCaptureToken),
+  );
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
     if (
@@ -168,6 +183,8 @@ export async function createApp(
       ? next()
       : res.status(403).json({ error: "Teacher access required" });
   app.use("/api/ai", aiRouter({ ...ai, pool }));
+  app.use("/api/university-accounts", universityAccountsRouter(pool));
+  app.use("/api/browser-imports", browserImportsRouter(pool));
   app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal", portalRouter(pool));
   app.get("/api/courses", async (req, res) => {

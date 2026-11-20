@@ -495,10 +495,12 @@ export function StudentProfile({ user }) {
   );
 }
 export function AIWorkspace({ teacher = false }) {
+  const [cloudConsent, setCloudConsent] = useState(false);
   const [grounded, setGrounded] = useState(teacher);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState([]);
   const [connection, setConnection] = useState(null);
+  const cloud = connection?.provider === "openrouter";
   const [model, setModel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -547,6 +549,7 @@ export function AIWorkspace({ teacher = false }) {
         model,
         messages: context,
         grounding: grounded ? "my_records" : "none",
+        cloudConsent,
       });
       setMessages((previous) => [
         ...previous,
@@ -569,14 +572,14 @@ export function AIWorkspace({ teacher = false }) {
       <PageHeading
         eyebrow="UNIBRIDGE INTELLIGENCE"
         title="AI workspace"
-        description="Try your local AI assistant. Ask in English, Russian or Kazakh."
+        description="Ask your AI assistant in English, Russian or Kazakh."
       />
       <section className="panel ai-chat">
         <div className="chat-controls">
           <label>
-            Local model
+            AI model
             <select
-              aria-label="Local model"
+              aria-label="AI model"
               value={model}
               disabled={busy || messages.length > 0}
               onChange={(e) => setModel(e.target.value)}
@@ -606,6 +609,7 @@ export function AIWorkspace({ teacher = false }) {
             disabled={busy || !messages.length}
             onClick={() => {
               setMessages([]);
+              setCloudConsent(false);
               setError("");
             }}
           >
@@ -614,20 +618,36 @@ export function AIWorkspace({ teacher = false }) {
         </div>
         <p role="status">
           {connection === null
-            ? "Checking Ollama…"
+            ? "Checking AI configuration…"
             : connection.available
               ? model
-                ? "Connected to local Ollama"
+                ? cloud
+                  ? "OpenRouter configured — Claude replies use the cloud"
+                  : "Connected to local Ollama"
                 : "Ollama is running. Download a local chat model first."
               : connection.error}
         </p>
         <p className="chat-note">
-          {grounded
-            ? "Answers use your saved UniBridgeAI profile and publication list, sent only to the local model on this computer. Check cited records [P1], [PROFILE] before relying on an answer."
-            : "This preview uses only text you send here. University records and files are not connected."}{" "}
-          Chat history is kept in this page until you leave or start a new
-          chat; the last five turns are sent as context.
+          {cloud
+            ? "Messages and conversation context are sent to OpenRouter and its model provider. Saved records are sent only with your permission below. No passwords or API keys are included."
+            : grounded
+              ? "Answers use your saved UniBridgeAI profile and publication list, sent only to the local model on this computer. Check cited records [P1], [PROFILE] before relying on an answer."
+              : "This preview uses only text you send here. University records and files are not connected."}{" "}
+          Chat history is kept in this page until you leave or start a new chat;
+          the last five turns are sent as context.
         </p>
+        {cloud && grounded && (
+          <label className="inline-check">
+            <input
+              type="checkbox"
+              checked={cloudConsent}
+              disabled={busy || messages.length > 0}
+              onChange={(e) => setCloudConsent(e.target.checked)}
+            />
+            I agree to send selected profile fields and publications to
+            OpenRouter for this conversation.
+          </label>
+        )}
         {!messages.length && (
           <div className="prompt-grid">
             {ideas.map((p) => (
@@ -696,7 +716,11 @@ export function AIWorkspace({ teacher = false }) {
             <span>{prompt.length}/4000 characters</span>
             <button
               disabled={
-                busy || !model || !connection?.available || !prompt.trim()
+                busy ||
+                !model ||
+                !connection?.available ||
+                !prompt.trim() ||
+                (cloud && grounded && !cloudConsent)
               }
             >
               {busy ? "Thinking…" : "Send message"}

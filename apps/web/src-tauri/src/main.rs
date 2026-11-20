@@ -5,15 +5,14 @@
 //! 127.0.0.1, shows it in the window, stops it cleanly on exit so the database
 //! files are closed properly, and installs signed updates from GitHub Releases.
 
-use std::collections::hash_map::RandomState;
 use std::fs::{self, OpenOptions};
-use std::hash::{BuildHasher, Hasher};
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+use tauri::{State, Webview};
 
 use tauri::{AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
@@ -25,14 +24,15 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 struct Server {
     child: Mutex<Option<Child>>,
     token: String,
+    capture_token: String,
 }
 
+struct ImportCode(Mutex<Option<String>>);
+
 fn random_token() -> String {
-    // Two independently seeded SipHash states give 128 random bits from the OS.
-    let a = RandomState::new().build_hasher().finish();
-    let mut h = RandomState::new().build_hasher();
-    h.write_u128(Instant::now().elapsed().as_nanos() ^ std::process::id() as u128);
-    format!("{a:016x}{:016x}", h.finish())
+    let mut bytes = [0u8; 32];
+    getrandom::fill(&mut bytes).expect("operating system random generator failed");
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// Minimal HTTP/1.1 request to the local server; returns the status code.
@@ -54,7 +54,7 @@ fn local_request(method: &str, path: &str, token: &str, timeout: Duration) -> Op
         .ok()
 }
 
-fn start_server(app: &AppHandle, token: &str, data_dir: &PathBuf) -> Result<Child, String> {
+fn start_server(app: &AppHandle, token: &str, capture_token: &str, data_dir: &PathBuf) -> Result<Child, String> {
     let server_dir = app
         .path()
         .resource_dir()
@@ -79,6 +79,7 @@ fn start_server(app: &AppHandle, token: &str, data_dir: &PathBuf) -> Result<Chil
         .env("UB_ORIGIN", format!("http://localhost:{PORT}"))
         .env("UB_STATIC_DIR", server_dir.join("web"))
         .env("UB_SHUTDOWN_TOKEN", token)
+        .env("UB_NATIVE_CAPTURE_TOKEN", capture_token)
         .env("UB_EXIT_WITH_STDIN", "1")
         .env_remove("NODE_ENV")
         .env_remove("NODE_OPTIONS")
@@ -92,6 +93,70 @@ fn start_server(app: &AppHandle, token: &str, data_dir: &PathBuf) -> Result<Chil
     }
     cmd.spawn()
         .map_err(|e| format!("Could not start {}: {e}", node.display()))
+}
+
+fn supported_source(url: &Url) -> bool {
+    url.scheme() == "https"
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.port().is_none()
+        && matches!(url.host_str(), Some(
+            "du.astanait.edu.kz" | "my-du.astanait.edu.kz" | "lms.astanait.edu.kz"
+            | "linkedin.com" | "www.linkedin.com" | "scopus.com" | "www.scopus.com"
+            | "researchgate.net" | "www.researchgate.net" | "orcid.org"
+        ))
+}
+
+fn post_native_capture(secret: &str, code: &str, source: &str, content: &str) -> Result<(), String> {
+    let body = serde_json::json!({"token":code,"sourceUrl":source,"content":content}).to_string();
+    let mut stream = TcpStream::connect_timeout(&([127,0,0,1], PORT).into(), Duration::from_secs(3)).map_err(|_| "UniBridgeAI local server is unavailable".to_string())?;
+    stream.set_read_timeout(Some(Duration::from_secs(5))).map_err(|e| e.to_string())?;
+    stream.set_write_timeout(Some(Duration::from_secs(5))).map_err(|e| e.to_string())?;
+    let request = format!("POST /api/browser-import/native-capture HTTP/1.1\r\nHost: localhost:{PORT}\r\nOrigin: http://localhost:{PORT}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nx-unibridge-capture: {secret}\r\nConnection: close\r\n\r\n{body}", body.len());
+    stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+    let mut response = String::new();
+    stream.read_to_string(&mut response).map_err(|e| e.to_string())?;
+    let (head, payload) = response.split_once("\r\n\r\n").ok_or("Invalid local server response")?;
+    let status: u16 = head.lines().next().and_then(|line| line.split_whitespace().nth(1)).and_then(|code| code.parse().ok()).ok_or("Invalid local server status")?;
+    if status == 201 { return Ok(()); }
+    let message = serde_json::from_str::<serde_json::Value>(payload).ok().and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string)).unwrap_or_else(|| "Could not import this page".to_string());
+    Err(message)
+}
+
+#[tauri::command]
+async fn open_university_browser(app: AppHandle, state: State<'_, ImportCode>, url: String, code: String) -> Result<(), String> {
+    if code.len() != 64 || !code.bytes().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()) {
+        return Err("Generate a fresh import code first".into());
+    }
+    let url = Url::parse(&url).map_err(|_| "Invalid university URL")?;
+    if !supported_source(&url) { return Err("This website is not supported yet".into()); }
+    if let Some(existing) = app.get_webview_window("university-source") {
+        existing.navigate(url.clone()).map_err(|e| format!("Could not open the university page: {e}"))?;
+        let _ = existing.set_focus();
+        *state.0.lock().map_err(|_| "Import window is busy")? = Some(code);
+        return Ok(());
+    }
+    *state.0.lock().map_err(|_| "Import window is busy")? = Some(code);
+    WebviewWindowBuilder::new(&app, "university-source", WebviewUrl::External(url))
+        .title("UniBridgeAI · University account")
+        .inner_size(1200.0, 820.0)
+        .initialization_script(include_str!("../scripts/page-bridge.js"))
+        .build()
+        .map(|_| ())
+        .map_err(|e| format!("Could not open the in-app browser: {e}"))
+}
+
+#[tauri::command]
+fn capture_university_page(content: String, webview: Webview, server: State<'_, Server>, code: State<'_, ImportCode>) -> Result<(), String> {
+    if webview.label() != "university-source" { return Err("Capture is available only in the UniBridgeAI university window".into()); }
+    if content.trim().is_empty() || content.encode_utf16().count() > 30_000 { return Err("Select or shorten the text (maximum 30,000 characters)".into()); }
+    let url = webview.url().map_err(|_| "Could not read the current page")?;
+    if !supported_source(&url) { return Err("This page is outside the supported university and research sites".into()); }
+    let import_code = code.0.lock().map_err(|_| "Import window is busy")?.clone().ok_or("Return to UniBridgeAI and generate a new import code")?;
+    let source = format!("{}{}", url.origin(), url.path());
+    post_native_capture(&server.capture_token, &import_code, &source, content.trim())?;
+    *code.0.lock().map_err(|_| "Import window is busy")? = None;
+    Ok(())
 }
 
 /// Ask the server to close the database, then make sure the process is gone.
@@ -185,7 +250,8 @@ fn main() {
             let data_dir = app.path().app_data_dir()?;
             fs::create_dir_all(&data_dir)?;
             let token = random_token();
-            let child = match start_server(&handle, &token, &data_dir) {
+            let capture_token = random_token();
+            let child = match start_server(&handle, &token, &capture_token, &data_dir) {
                 Ok(child) => Some(child),
                 Err(e) => {
                     fail(&handle, format!("Не удалось запустить сервер UniBridgeAI.\n{e}"));
@@ -195,7 +261,9 @@ fn main() {
             app.manage(Server {
                 child: Mutex::new(child),
                 token,
+                capture_token,
             });
+            app.manage(ImportCode(Mutex::new(None)));
             std::thread::spawn(move || {
                 let started = Instant::now();
                 loop {
@@ -246,6 +314,7 @@ fn main() {
             });
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![open_university_browser, capture_university_page])
         .build(tauri::generate_context!())
         .expect("Failed to launch UniBridgeAI");
     app.run(|handle, event| {

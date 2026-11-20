@@ -8,6 +8,11 @@ import { applyMigrations } from "./migrations.js";
 import { createApp } from "./app.js";
 import { hashPassword, newToken } from "./security.js";
 import { backupLocalDatabase } from "./local-backup.js";
+import dotenv from "dotenv";
+dotenv.config({
+  path: fileURLToPath(new URL("../../../.env", import.meta.url)),
+  quiet: true,
+});
 if (process.env.NODE_ENV === "production")
   throw new Error("Embedded preview is disabled in production");
 // Desktop builds pass these; the repository preview uses the defaults.
@@ -18,6 +23,7 @@ const port = Number(process.env.UB_PORT || 3001);
 const origin = process.env.UB_ORIGIN || "http://localhost:5173";
 const staticDir = process.env.UB_STATIC_DIR || null;
 const shutdownToken = process.env.UB_SHUTDOWN_TOKEN || "";
+const nativeCaptureToken = process.env.UB_NATIVE_CAPTURE_TOKEN || "";
 await mkdir(data, { recursive: true });
 // Reserve the API port BEFORE opening PGlite: two processes must never open it.
 let app;
@@ -94,6 +100,7 @@ try {
     origin,
     staticDir,
     allowRegistration: process.env.UB_ALLOW_REGISTRATION !== "0",
+    nativeCaptureToken,
   });
   console.log(
     `Local embedded PostgreSQL preview on port ${port}. Credentials: ${fileURLToPath(new URL("local-access.txt", data))}. This is not the Docker service.`,
