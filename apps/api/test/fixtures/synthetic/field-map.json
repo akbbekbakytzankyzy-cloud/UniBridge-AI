@@ -1,0 +1,20 @@
+{
+  "source": "Synthetic legacy export (DU-style)",
+  "target": "UniBridgeAI faculty profile",
+  "fields": [
+    { "legacy": "Fio", "target": "name_cyrillic", "note": "Full name, Cyrillic" },
+    { "legacy": "Dolzhnost", "target": "position", "note": "Position" },
+    { "legacy": "Kafedra", "target": "department", "note": "Department" },
+    { "legacy": "Data_rozhdeniya", "target": null, "note": "Personal date of birth — not mapped, must be reported as excluded" },
+    { "legacy": "Uchenaya_stepen", "target": "degree", "note": "Degree" },
+    { "legacy": "Oblast_stepeni", "target": "degree_field", "note": "Field of the degree" },
+    { "legacy": "Uchyonoe_zvanie", "target": "academic_title", "note": "Academic title" },
+    { "legacy": "ORCID_ID", "target": "orcid", "note": "ORCID" },
+    { "legacy": "Telefon", "target": null, "note": "Phone — private, not mapped" },
+    { "legacy": "Dolya_stavki", "target": "employment_fraction", "note": "Employment fraction (number)" },
+    { "legacy": "Data_priema", "target": "hire_date", "note": "Hire date, dd.mm.yyyy" },
+    { "legacy": "Rukovoditel", "target": null, "note": "Supervisor name — not a profile field" }
+  ],
+  "expected_excluded": ["Data_rozhdeniya", "Telefon", "Rukovoditel"],
+  "expected_ambiguous": []
+}

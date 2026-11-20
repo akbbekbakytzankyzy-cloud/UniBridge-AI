@@ -1,0 +1,8 @@
+{
+  "name_cyrillic": "Example Ivanova Ivan Petrovich",
+  "department": "Computing (synthetic)",
+  "position": null,
+  "degree": null,
+  "orcid": "0000-0000-0000-0001",
+  "confirmed_fields": ["name_cyrillic", "department", "orcid"]
+}

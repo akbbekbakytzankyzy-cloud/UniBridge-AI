@@ -1,0 +1,38 @@
+{
+  "P1": {
+    "expected": [
+      { "record_type": "publication", "title": "Smart Campus Energy Optimization", "year": 2025, "doi": "10.5555/syn.2025.001", "venue": "Journal of Synthetic Systems", "evidence": "P1" },
+      { "record_type": "publication", "title": "Textbook of Applied Data Mining", "year": 2024, "doi": null, "venue": "Demo Press", "evidence": "P1" }
+    ],
+    "injected_errors": [
+      { "kind": "duplicate", "detail": "Entry 3 repeats entry 1 with British spelling 'Optimisation' and the same DOI; must be flagged, not saved twice." }
+    ],
+    "must_not_create": ["a second record with DOI 10.5555/syn.2025.001"]
+  },
+  "P2": {
+    "expected": [
+      { "record_type": "course", "title": "Data Mining Basics", "year": 2024, "term": "autumn", "credits": 4 },
+      { "record_type": "publication", "title": "Learning Analytics Pilot", "year": 2023 },
+      { "record_type": "project", "title": "Campus Energy Pilot", "start_year": 2024, "end_year": 2025, "budget": null },
+      { "record_type": "certificate", "title": "Teaching Excellence Course", "date": "2024-03-12", "certificate_number": null }
+    ],
+    "injected_errors": [
+      { "kind": "date_format", "detail": "Certificate date is written 12.03.2024 (day first); must become 2024-03-12, not 2024-12-03." },
+      { "kind": "missing_value", "detail": "Project budget is not stated; must be null and listed as missing, not invented." },
+      { "kind": "missing_value", "detail": "Certificate number is withheld; must be null." }
+    ],
+    "must_not_create": ["a budget amount", "a certificate number"]
+  },
+  "P3": {
+    "expected": [
+      { "record_type": "course", "title": "Applied Statistics for Engineers", "term": "spring" },
+      { "record_type": "material", "title": "Lecture notes", "year": 2024 },
+      { "record_type": "material", "title": "Problem set 2", "year": null }
+    ],
+    "injected_errors": [
+      { "kind": "missing_year", "detail": "Problem set has no year; must be null and flagged for review, not guessed." },
+      { "kind": "out_of_scope", "detail": "Assessment records are excluded by the page; nothing about grades may be created." }
+    ],
+    "must_not_create": ["any grade or assessment record"]
+  }
+}

@@ -63,6 +63,9 @@ function Source({ item, refresh }) {
         Delete snapshot
       </button>
       {item.status === "accepted" && (
+        <ExtractButton item={item} act={act} busy={busy} />
+      )}
+      {item.status === "accepted" && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -192,6 +195,129 @@ export default function BrowserImports() {
       {items.map((item) => (
         <Source key={item.id} item={item} refresh={load} />
       ))}
+    </section>
+  );
+}
+
+function ExtractButton({ item, act, busy }) {
+  const [cloudConsent, setCloudConsent] = useState(false);
+  const [provider, setProvider] = useState("local");
+  const [result, setResult] = useState("");
+  return (
+    <div>
+      <label>
+        <input
+          type="radio"
+          name={`provider-${item.id}`}
+          checked={provider === "local"}
+          onChange={() => setProvider("local")}
+          disabled={busy}
+        />{" "}
+        Analyse locally (Ollama, qwen3:4b)
+      </label>{" "}
+      <label>
+        <input
+          type="radio"
+          name={`provider-${item.id}`}
+          checked={provider === "cloud"}
+          onChange={() => setProvider("cloud")}
+          disabled={busy}
+        />{" "}
+        Analyse in the cloud (Claude Haiku 5.5)
+      </label>
+      {provider === "cloud" && (
+        <label>
+          <br />
+          <input
+            type="checkbox"
+            checked={cloudConsent}
+            onChange={(e) => setCloudConsent(e.target.checked)}
+            disabled={busy}
+          />{" "}
+          I agree to send this page text to OpenRouter.
+        </label>
+      )}
+      <br />
+      <button
+        disabled={busy || (provider === "cloud" && !cloudConsent)}
+        onClick={() =>
+          act(async () => {
+            const r = await api(`/extraction/sources/${item.id}/extract`, {
+              provider,
+              cloudConsent,
+            });
+            setResult(
+              `${r.drafts} draft record(s) created. Review them in "Drafts to confirm" below.`,
+            );
+          })
+        }
+      >
+        Read records from this page
+      </button>
+      {result && <p role="status">{result}</p>}
+    </div>
+  );
+}
+
+export function DraftsToConfirm() {
+  const [drafts, setDrafts] = useState([]);
+  const [error, setError] = useState("");
+  const load = () =>
+    api("/extraction/drafts")
+      .then((d) => setDrafts(d.drafts))
+      .catch((e) => setError(e.message));
+  useEffect(() => {
+    load();
+  }, []);
+  const decide = async (id, action) => {
+    try {
+      await api(`/extraction/drafts/${id}/${action}`, {});
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  return (
+    <section className="panel">
+      <h2>Drafts to confirm</h2>
+      <p className="muted">
+        Nothing here is saved to your records until you confirm it.
+      </p>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {drafts.map((d) => (
+        <article className="panel" key={d.id}>
+          <span className="tag">
+            {d.record_type} · from {d.model}
+          </span>
+          <h3>{d.data.title}</h3>
+          <ul>
+            {Object.entries(d.data)
+              .filter(([k]) => k !== "title")
+              .map(([k, v]) => (
+                <li key={k}>
+                  {k}: {String(v)}
+                </li>
+              ))}
+          </ul>
+          {d.missing_fields.length > 0 && (
+            <p>Not found on the page: {d.missing_fields.join(", ")}</p>
+          )}
+          {d.warnings.map((w) => (
+            <p key={w} className="error">
+              {w}
+            </p>
+          ))}
+          <button onClick={() => decide(d.id, "confirm")}>Confirm</button>{" "}
+          <button className="secondary" onClick={() => decide(d.id, "reject")}>
+            Reject
+          </button>
+        </article>
+      ))}
+      {!drafts.length && <p className="empty">No drafts waiting.</p>}
     </section>
   );
 }

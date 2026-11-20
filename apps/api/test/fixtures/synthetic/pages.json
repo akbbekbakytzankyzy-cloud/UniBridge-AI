@@ -1,0 +1,17 @@
+[
+  {
+    "id": "P1",
+    "sourceUrl": "https://orcid.org/0000-0000-0000-0001",
+    "text": "Example Ivanova Ivan Petrovich. Works: 1. Smart Campus Energy Optimization. Journal of Synthetic Systems, 2025, DOI 10.5555/syn.2025.001. 2. Textbook of Applied Data Mining. Publisher Demo Press, 2024. 3. Smart Campus Energy Optimisation. Journal of Synthetic Systems, 2025, DOI 10.5555/syn.2025.001."
+  },
+  {
+    "id": "P2",
+    "sourceUrl": "https://du.astanait.edu.kz/profile/synthetic-2",
+    "text": "Courses taught: Data Mining Basics, 2024/2025 autumn, 4 credits. Publication list: Learning Analytics Pilot, 2023. Project: Campus Energy Pilot, 2024-2025, budget not stated. Certificate: Teaching Excellence Course, issued 12.03.2024, certificate number withheld."
+  },
+  {
+    "id": "P3",
+    "sourceUrl": "https://lms.astanait.edu.kz/course/synthetic-3",
+    "text": "Course: Applied Statistics for Engineers (synthetic). Term: spring. Materials: lecture notes (2024), problem set 2 (no year given). Assessment records are not part of this page."
+  }
+]

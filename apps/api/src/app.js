@@ -11,6 +11,8 @@ import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { facultyRouter } from "./faculty.js";
 import { portalRouter } from "./portal.js";
+import { extractionRouter } from "./extraction.js";
+import { createAIClient } from "./ai-client.js";
 import {
   newToken,
   readSession,
@@ -182,8 +184,10 @@ export async function createApp(
     req.user.role === "teacher"
       ? next()
       : res.status(403).json({ error: "Teacher access required" });
+  const aiClient = ai.client || createAIClient({ fetcher: ai.fetcher });
   app.use("/api/ai", aiRouter({ ...ai, pool }));
   app.use("/api/university-accounts", universityAccountsRouter(pool));
+  app.use("/api/extraction", extractionRouter({ pool, ai: aiClient }));
   app.use("/api/browser-imports", browserImportsRouter(pool));
   app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal", portalRouter(pool));
