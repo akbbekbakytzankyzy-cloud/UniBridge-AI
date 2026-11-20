@@ -153,7 +153,7 @@ fn capture_university_page(content: String, webview: Webview, server: State<'_, 
     let url = webview.url().map_err(|_| "Could not read the current page")?;
     if !supported_source(&url) { return Err("This page is outside the supported university and research sites".into()); }
     let import_code = code.0.lock().map_err(|_| "Import window is busy")?.clone().ok_or("Return to UniBridgeAI and generate a new import code")?;
-    let source = format!("{}{}", url.origin(), url.path());
+    let source = format!("{}{}", url.origin().ascii_serialization(), url.path());
     post_native_capture(&server.capture_token, &import_code, &source, content.trim())?;
     *code.0.lock().map_err(|_| "Import window is busy")? = None;
     Ok(())
