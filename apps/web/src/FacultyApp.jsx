@@ -26,7 +26,7 @@ function Field({ field, value, onChange }) {
   );
 }
 
-export default function FacultyWorkspace({ user, tab, onDirtyChange }) {
+export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = true }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
@@ -58,6 +58,23 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange }) {
       active = false;
     };
   }, [user.id]);
+  // Imports (DU, OneDrive, ORCID) change the profile on another page, so read it
+  // again when the teacher comes back — unless there are unsaved edits.
+  useEffect(() => {
+    if (dirty || !schema || !visible) return;
+    let active = true;
+    Promise.all([api("/faculty/profile"), api("/faculty/publications")])
+      .then(([p, pubs]) => {
+        if (!active) return;
+        setProfile(p.profile);
+        setPublications(pubs.publications);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, visible]);
   useEffect(() => {
     onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);

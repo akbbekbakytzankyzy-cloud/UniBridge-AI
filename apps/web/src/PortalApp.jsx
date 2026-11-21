@@ -863,6 +863,7 @@ export default function PortalApp() {
               <FacultyWorkspace
                 user={user}
                 tab={facultyPages.includes(page) ? page : "My profile"}
+                visible={facultyPages.includes(page)}
                 onDirtyChange={setDirty}
               />
             </div>
