@@ -1886,3 +1886,34 @@ td {
   width: auto;
   margin-top: 2px;
 }
+/* Teacher timetable and gradebook editors */
+.teaching-editor {
+  margin-bottom: 18px;
+}
+.teaching-editor h2 {
+  margin-top: 0;
+}
+.teaching-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 4px 16px;
+  margin-bottom: 12px;
+}
+.teaching-grid .wide {
+  grid-column: 1 / -1;
+}
+.teaching-grid select {
+  width: 100%;
+}
+.event-list .event-remove {
+  margin-left: auto;
+}
+.grade-actions {
+  white-space: nowrap;
+}
+.grade-actions .text-button + .text-button {
+  margin-left: 10px;
+}
+.text-button.danger {
+  color: #c2410c;
+}

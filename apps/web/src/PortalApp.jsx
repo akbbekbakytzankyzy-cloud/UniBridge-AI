@@ -842,7 +842,7 @@ export default function PortalApp() {
           {page === "My courses" && (
             <Courses user={user} onCount={onCourseCount} />
           )}
-          {page === "Timetable" && <Timetable />}
+          {page === "Timetable" && <Timetable user={user} />}
           {page === "Academic records" && <AcademicRecords user={user} />}
           {page === "Services & requests" && <ServiceRequests />}
           {page === "AI workspace" && <AIWorkspace teacher={teacher} />}

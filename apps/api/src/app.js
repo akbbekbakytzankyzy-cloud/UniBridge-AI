@@ -11,6 +11,7 @@ import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { facultyRouter } from "./faculty.js";
 import { portalRouter } from "./portal.js";
+import { teachingRouter } from "./teaching.js";
 import { extractionRouter } from "./extraction.js";
 import { autofillRouter } from "./autofill.js";
 import { fieldMappingRouter } from "./field-mapping.js";
@@ -194,6 +195,7 @@ export async function createApp(
   app.use("/api/field-mapping", fieldMappingRouter({ pool, ai: aiClient }));
   app.use("/api/browser-imports", browserImportsRouter(pool));
   app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
+  app.use("/api/portal/teaching", teachingRouter(pool));
   app.use("/api/portal", portalRouter(pool));
   app.get("/api/courses", async (req, res) => {
     const { rows } = await pool.query(
