@@ -12,6 +12,7 @@ import { z } from "zod";
 import { facultyRouter } from "./faculty.js";
 import { portalRouter } from "./portal.js";
 import { teachingRouter } from "./teaching.js";
+import { profileFilesRouter } from "./profile-files.js";
 import { duImportRouter } from "./du-import.js";
 import {
   onedriveCallbackRouter,
@@ -210,6 +211,10 @@ export async function createApp(
   app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal/teaching", teachingRouter(pool));
   app.use("/api/onedrive", onedriveRouter(pool, onedriveCfg));
+  app.use(
+    "/api/profile-files",
+    profileFilesRouter(pool, { fetcher: scholarlyFetch }),
+  );
   app.use("/api/du-import", duImportRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal", portalRouter(pool));
   app.get("/api/courses", async (req, res) => {
