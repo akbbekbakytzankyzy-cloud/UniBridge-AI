@@ -753,6 +753,19 @@ export default function PortalApp() {
           <div className="account-name">
             <strong>{user.name}</strong>
             <small>{teacher ? "Faculty account" : "Student account"}</small>
+            {"__TAURI_INTERNALS__" in window && (
+              <button
+                type="button"
+                className="link-button"
+                onClick={() =>
+                  import("@tauri-apps/api/core").then(({ invoke }) =>
+                    invoke("check_for_updates").catch((e) => setError(String(e))),
+                  )
+                }
+              >
+                Check for updates
+              </button>
+            )}
           </div>
           <button
             className="icon-button"

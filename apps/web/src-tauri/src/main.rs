@@ -18,6 +18,7 @@ use tauri::{AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindowBuilder}
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
 
+
 const PORT: u16 = 3417;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 
@@ -207,38 +208,91 @@ fn show_first_run_credentials(app: &AppHandle, data_dir: &PathBuf) {
     }
 }
 
-fn check_for_update(app: AppHandle) {
+// Writes one line to update.log in the app data folder, so a silent failure
+// (network, firewall, antivirus, signature) can be diagnosed later.
+fn log_update(app: &AppHandle, line: &str) {
+    if let Ok(dir) = app.path().app_data_dir() {
+        let _ = fs::create_dir_all(&dir);
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(dir.join("update.log")) {
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let _ = writeln!(file, "[{stamp}] {line}");
+        }
+    }
+}
+
+// `manual` is true when the user pressed "Check for updates"; then every
+// outcome is shown. The automatic start-up check stays quiet unless an update exists.
+fn check_for_update(app: AppHandle, manual: bool) {
     tauri::async_runtime::spawn(async move {
-        let Ok(updater) = app.updater() else { return };
-        let Ok(Some(update)) = updater.check().await else { return };
-        let handle = app.clone();
-        app.dialog()
-            .message(format!(
-                "Доступна новая версия {} (у вас {}).\n\n{}\n\nУстановить сейчас? Приложение перезапустится.",
-                update.version,
-                update.current_version,
-                update.body.clone().unwrap_or_default()
-            ))
-            .title("Обновление UniBridgeAI")
-            .buttons(MessageDialogButtons::OkCancelCustom(
-                "Установить".into(),
-                "Позже".into(),
-            ))
-            .show(move |install| {
-                if !install {
-                    return;
+        let outcome = match app.updater() {
+            Ok(updater) => updater.check().await.map_err(|e| e.to_string()),
+            Err(e) => Err(e.to_string()),
+        };
+        match outcome {
+            Err(e) => {
+                log_update(&app, &format!("check failed: {e}"));
+                if manual {
+                    app.dialog()
+                        .message(format!("Не удалось проверить обновления.\n\n{e}\n\nПодробности записаны в update.log."))
+                        .title("Обновление UniBridgeAI")
+                        .kind(MessageDialogKind::Error)
+                        .show(|_| {});
                 }
-                tauri::async_runtime::spawn(async move {
-                    // Close the database before the installer replaces files.
-                    let h = handle.clone();
-                    let _ = tauri::async_runtime::spawn_blocking(move || stop_server(&h)).await;
-                    match update.download_and_install(|_, _| {}, || {}).await {
-                        Ok(()) => handle.restart(),
-                        Err(e) => fail(&handle, format!("Обновление не установлено: {e}")),
-                    }
-                });
-            });
+            }
+            Ok(None) => {
+                log_update(&app, "no update available");
+                if manual {
+                    app.dialog()
+                        .message(format!("У вас установлена последняя версия ({}).", app.package_info().version))
+                        .title("Обновление UniBridgeAI")
+                        .kind(MessageDialogKind::Info)
+                        .show(|_| {});
+                }
+            }
+            Ok(Some(update)) => {
+                log_update(&app, &format!("update {} available (current {})", update.version, update.current_version));
+                let handle = app.clone();
+                app.dialog()
+                    .message(format!(
+                        "Доступна новая версия {} (у вас {}).\n\n{}\n\nУстановить сейчас? Программа закроется, обновится и откроется снова. Ваши данные не удаляются.",
+                        update.version,
+                        update.current_version,
+                        update.body.clone().unwrap_or_default()
+                    ))
+                    .title("Обновление UniBridgeAI")
+                    .buttons(MessageDialogButtons::OkCancelCustom("Установить".into(), "Позже".into()))
+                    .show(move |install| {
+                        if !install {
+                            log_update(&handle, "update postponed by user");
+                            return;
+                        }
+                        tauri::async_runtime::spawn(async move {
+                            // Close the database before the installer replaces files.
+                            let h = handle.clone();
+                            let _ = tauri::async_runtime::spawn_blocking(move || stop_server(&h)).await;
+                            match update.download_and_install(|_, _| {}, || {}).await {
+                                Ok(()) => {
+                                    log_update(&handle, "update installed; restarting");
+                                    handle.restart();
+                                }
+                                Err(e) => {
+                                    log_update(&handle, &format!("install failed: {e}"));
+                                    fail(&handle, format!("Обновление не установлено: {e}"));
+                                }
+                            }
+                        });
+                    });
+            }
+        }
     });
+}
+
+#[tauri::command]
+fn check_for_updates(app: AppHandle) {
+    check_for_update(app, true);
 }
 
 fn main() {
@@ -310,11 +364,11 @@ fn main() {
                     }
                 });
                 show_first_run_credentials(&handle, &data_dir);
-                check_for_update(handle);
+                check_for_update(handle, false);
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![open_university_browser, capture_university_page])
+        .invoke_handler(tauri::generate_handler![open_university_browser, capture_university_page, check_for_updates])
         .build(tauri::generate_context!())
         .expect("Failed to launch UniBridgeAI");
     app.run(|handle, event| {

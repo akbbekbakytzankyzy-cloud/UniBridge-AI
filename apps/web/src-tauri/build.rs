@@ -3,6 +3,7 @@ fn main() {
         tauri_build::AppManifest::new().commands(&[
             "open_university_browser",
             "capture_university_page",
+            "check_for_updates",
         ]),
     );
     tauri_build::try_build(attributes).expect("failed to configure Tauri permissions");
