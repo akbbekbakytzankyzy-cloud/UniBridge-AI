@@ -140,6 +140,7 @@ async fn open_university_browser(app: AppHandle, state: State<'_, ImportCode>, u
     WebviewWindowBuilder::new(&app, "university-source", WebviewUrl::External(url))
         .title("UniBridgeAI · University account")
         .inner_size(1200.0, 820.0)
+        .initialization_script(include_str!("../scripts/du-capture.js"))
         .initialization_script(include_str!("../scripts/page-bridge.js"))
         .build()
         .map(|_| ())
@@ -149,7 +150,7 @@ async fn open_university_browser(app: AppHandle, state: State<'_, ImportCode>, u
 #[tauri::command]
 fn capture_university_page(content: String, webview: Webview, server: State<'_, Server>, code: State<'_, ImportCode>) -> Result<(), String> {
     if webview.label() != "university-source" { return Err("Capture is available only in the UniBridgeAI university window".into()); }
-    if content.trim().is_empty() || content.encode_utf16().count() > 30_000 { return Err("Select or shorten the text (maximum 30,000 characters)".into()); }
+    if content.trim().is_empty() || content.encode_utf16().count() > 300_000 { return Err("The page is too large to import (maximum 300,000 characters)".into()); }
     let url = webview.url().map_err(|_| "Could not read the current page")?;
     if !supported_source(&url) { return Err("This page is outside the supported university and research sites".into()); }
     let import_code = code.0.lock().map_err(|_| "Import window is busy")?.clone().ok_or("Return to UniBridgeAI and generate a new import code")?;

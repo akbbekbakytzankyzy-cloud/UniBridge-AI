@@ -17,14 +17,37 @@
     const button = document.createElement("button");
     button.textContent = "Import this page to UniBridgeAI";
     const dialog = document.createElement("dialog");
-    dialog.innerHTML = `<h2>Review page data</h2><p>Check and edit this text. It will be saved to your UniBridgeAI account only after you choose Send.</p><textarea maxlength="30000" aria-label="Text to import"></textarea><footer><button class="secondary" data-action="cancel">Cancel</button><button data-action="send">Send for review</button></footer><p role="status"></p>`;
+    dialog.innerHTML = `<h2>Review page data</h2><p>Check and edit this text. It will be saved to your UniBridgeAI account only after you choose Send.</p><textarea maxlength="300000" aria-label="Text to import"></textarea><footer><button class="secondary" data-action="cancel">Cancel</button><button data-action="send">Send for review</button></footer><p role="status"></p>`;
     const area = dialog.querySelector("textarea");
     const status = dialog.querySelector("[role=status]");
-    button.onclick = () => {
+    // On a DU teacher profile the whole profile (all tabs and pages) is collected.
+    const duProfile = location.hostname === "du.astanait.edu.kz" && typeof window.__unibridgeDuCapture === "function";
+    if (duProfile) button.textContent = "Import full DU profile to UniBridgeAI";
+    button.onclick = async () => {
+      if (duProfile && document.querySelector(".ant-tabs [role=tab]")) {
+        button.disabled = true;
+        try {
+          const data = await window.__unibridgeDuCapture((step) => { button.textContent = "Reading " + step; });
+          area.value = JSON.stringify(data);
+          const counts = Object.entries(data.sections).map(([k, v]) => k + ": " + v.rows.length).join(", ");
+          area.readOnly = true;
+          status.textContent = "Collected the whole DU profile (" + counts + "). UniBridgeAI will show every item for review before saving.";
+        } catch (error) {
+          area.readOnly = false;
+          area.value = "";
+          status.textContent = "Could not read the DU profile: " + String(error).slice(0, 200);
+        } finally {
+          button.disabled = false;
+          button.textContent = "Import full DU profile to UniBridgeAI";
+        }
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        return;
+      }
+      area.readOnly = false;
       const clone = document.body.cloneNode(true);
       clone.querySelector("#unibridge-import-host")?.remove();
       for (const node of clone.querySelectorAll("script,style,noscript,svg,canvas,iframe,input,textarea,select,button,[hidden],[aria-hidden=true]")) node.remove();
-      area.value = (clone.innerText || clone.textContent || "").replace(/\n{3,}/g,"\n\n").trim().slice(0,30000);
+      area.value = (clone.innerText || clone.textContent || "").replace(/\n{3,}/g,"\n\n").trim().slice(0,300000);
       status.textContent = area.value ? "Review the text before sending." : "No readable page text found.";
       if (typeof dialog.showModal === "function") dialog.showModal();
     };

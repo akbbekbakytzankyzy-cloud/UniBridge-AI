@@ -36,7 +36,10 @@ const profileInput = z
     ...Object.fromEntries(
       Object.entries(profileSchema.collections).map(([key, c]) => [
         key,
-        z.array(objectFor(c.fields)).max(100),
+        // Sections added later stay optional, so older clients never erase them.
+        ["employment", "projects", "materials"].includes(key)
+          ? z.array(objectFor(c.fields)).max(200).optional()
+          : z.array(objectFor(c.fields)).max(100),
       ]),
     ),
   })
@@ -90,7 +93,7 @@ export function facultyRouter(pool, { fetcher = fetch } = {}) {
   router.get("/schema", (req, res) => res.json(profileSchema));
   router.get("/profile", async (req, res) => {
     const { rows } = await pool.query(
-      "SELECT details,education,training,awards,revision,updated_at FROM faculty_profiles WHERE user_id=$1",
+      "SELECT details,education,training,awards,employment,projects,materials,revision,updated_at FROM faculty_profiles WHERE user_id=$1",
       [req.user.id],
     );
     res.json({
@@ -99,6 +102,9 @@ export function facultyRouter(pool, { fetcher = fetch } = {}) {
         education: [],
         training: [],
         awards: [],
+        employment: [],
+        projects: [],
+        materials: [],
         revision: 0,
       },
     });
@@ -106,10 +112,12 @@ export function facultyRouter(pool, { fetcher = fetch } = {}) {
   router.put("/profile", async (req, res) => {
     const v = profileInput.parse(req.body);
     const { rows } = await pool.query(
-      `INSERT INTO faculty_profiles(user_id,details,education,training,awards)
-      SELECT $1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb WHERE $6=0 OR EXISTS(SELECT 1 FROM faculty_profiles WHERE user_id=$1)
-      ON CONFLICT(user_id) DO UPDATE SET details=EXCLUDED.details,education=EXCLUDED.education,training=EXCLUDED.training,awards=EXCLUDED.awards,revision=faculty_profiles.revision+1,updated_at=now()
-      WHERE faculty_profiles.revision=$6 RETURNING details,education,training,awards,revision,updated_at`,
+      `INSERT INTO faculty_profiles(user_id,details,education,training,awards,employment,projects,materials)
+      SELECT $1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,COALESCE($7::jsonb,'[]'),COALESCE($8::jsonb,'[]'),COALESCE($9::jsonb,'[]') WHERE $6=0 OR EXISTS(SELECT 1 FROM faculty_profiles WHERE user_id=$1)
+      ON CONFLICT(user_id) DO UPDATE SET details=EXCLUDED.details,education=EXCLUDED.education,training=EXCLUDED.training,awards=EXCLUDED.awards,
+        employment=COALESCE($7::jsonb,faculty_profiles.employment),projects=COALESCE($8::jsonb,faculty_profiles.projects),materials=COALESCE($9::jsonb,faculty_profiles.materials),
+        revision=faculty_profiles.revision+1,updated_at=now()
+      WHERE faculty_profiles.revision=$6 RETURNING details,education,training,awards,employment,projects,materials,revision,updated_at`,
       [
         req.user.id,
         JSON.stringify(v.details),
@@ -117,6 +125,9 @@ export function facultyRouter(pool, { fetcher = fetch } = {}) {
         JSON.stringify(v.training),
         JSON.stringify(v.awards),
         v.revision,
+        v.employment ? JSON.stringify(v.employment) : null,
+        v.projects ? JSON.stringify(v.projects) : null,
+        v.materials ? JSON.stringify(v.materials) : null,
       ],
     );
     if (!rows.length)

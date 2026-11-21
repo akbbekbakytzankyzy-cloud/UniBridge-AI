@@ -51,7 +51,7 @@ export function browserCaptureRouter(pool, nativeCaptureToken = "") {
         .object({
           token: z.string().regex(/^[a-f0-9]{64}$/),
           sourceUrl: z.string().max(2000),
-          content: z.string().trim().min(1).max(30000),
+          content: z.string().trim().min(1).max(300000),
         })
         .strict()
         .parse(req.body);

@@ -1949,3 +1949,31 @@ td {
 .folder-picker li {
   padding: 4px 0;
 }
+/* DU profile import review */
+.du-review h3 {
+  margin: 18px 0 6px;
+}
+.du-review .inline-check {
+  display: block;
+  margin: 4px 0;
+}
+.du-rows,
+.du-pubs {
+  margin: 6px 0 12px;
+  padding-left: 22px;
+}
+.du-pubs li {
+  margin: 10px 0;
+}
+.du-rows li {
+  margin: 3px 0;
+  font-size: 12px;
+}
+.tag.warn {
+  background: #fff4e5;
+  color: #9a4d00;
+}
+.warn-text {
+  color: #9a4d00;
+  font-size: 12px;
+}
