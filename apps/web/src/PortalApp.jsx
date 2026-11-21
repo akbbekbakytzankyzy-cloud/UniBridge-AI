@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { api } from "./api.js";
 import { Icon } from "./icons.jsx";
 import FacultyWorkspace from "./FacultyApp.jsx";
+import { TeacherToday } from "./TeachingTools.jsx";
 import Courses from "./Courses.jsx";
 import UniversityAccounts from "./UniversityAccounts.jsx";
 import {
@@ -413,6 +414,7 @@ function Dashboard({ user, summary, navigate }) {
           </button>
         ))}
       </div>
+      {teacher && <TeacherToday navigate={navigate} />}
       <div className="dashboard-columns">
         <div>
           <section className="panel quick-panel">

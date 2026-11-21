@@ -308,3 +308,96 @@ export function useGradeActions(onChange, setError) {
     }
   };
 }
+
+// Home page for teachers: the next classes and grades that are not published yet.
+const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+export function TeacherToday({ navigate }) {
+  const [events, setEvents] = useState(null),
+    [pending, setPending] = useState(null),
+    [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    const today = new Date();
+    const yesterday = new Date(today.getTime() - 86400000);
+    const week = new Date(today.getTime() + 7 * 86400000);
+    Promise.all([
+      api(`/portal/timetable?from=${localDate(yesterday)}&to=${localDate(week)}`),
+      api("/portal/academic-records"),
+    ])
+      .then(([t, r]) => {
+        if (!active) return;
+        const now = Date.now();
+        setEvents(t.events.filter((e) => Date.parse(e.starts_at) >= now).slice(0, 5));
+        setPending(r.records.filter((x) => !x.published_at && x.score !== null).slice(0, 5));
+      })
+      .catch((e) => active && setError(e.message));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const when = (iso) =>
+    new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <section className="teacher-today" aria-label="Today for teachers">
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      <div className="panel">
+        <div className="section-heading">
+          <h2>Next classes</h2>
+          <button type="button" className="text-button" onClick={() => navigate("Timetable")}>
+            Open timetable
+          </button>
+        </div>
+        {!events ? (
+          <p className="muted">Loading…</p>
+        ) : events.length ? (
+          <ul className="today-list">
+            {events.map((e) => (
+              <li key={e.id}>
+                <strong>{e.title}</strong>
+                <span className="muted">
+                  {" "}
+                  · {e.code} · {when(e.starts_at)}
+                  {e.room ? ` · ${e.room}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">No classes in the next 7 days. Add one from the timetable.</p>
+        )}
+      </div>
+      <div className="panel">
+        <div className="section-heading">
+          <h2>Grades waiting to be published</h2>
+          <button type="button" className="text-button" onClick={() => navigate("Academic records")}>
+            Open gradebook
+          </button>
+        </div>
+        {!pending ? (
+          <p className="muted">Loading…</p>
+        ) : pending.length ? (
+          <ul className="today-list">
+            {pending.map((r) => (
+              <li key={`${r.course_id}-${r.student_id}-${r.assessment}`}>
+                <strong>{r.student_name}</strong>
+                <span className="muted">
+                  {" "}
+                  · {r.code} · {r.assessment} · {r.score}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">Every grade is published.</p>
+        )}
+      </div>
+    </section>
+  );
+}

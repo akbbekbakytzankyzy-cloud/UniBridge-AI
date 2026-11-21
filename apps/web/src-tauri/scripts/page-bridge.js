@@ -27,7 +27,7 @@
       if (duProfile && document.querySelector(".ant-tabs [role=tab]")) {
         button.disabled = true;
         try {
-          const data = await window.__unibridgeDuCapture((step) => { button.textContent = "Reading " + step; });
+          const data = await window.__unibridgeDuCapture((step) => { button.textContent = "Reading " + step; status.textContent = "Reading the DU profile: " + step + ". Please keep this page open."; });
           area.value = JSON.stringify(data);
           const counts = Object.entries(data.sections).map(([k, v]) => k + ": " + v.rows.length).join(", ");
           area.readOnly = true;

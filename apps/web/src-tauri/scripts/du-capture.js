@@ -49,7 +49,7 @@
     return { headers, rows };
   }
 
-  async function readAllPages(pane) {
+  async function readAllPages(pane, onPage = () => {}) {
     const first = readTable(pane);
     if (!first)
       return {
@@ -73,6 +73,7 @@
       if (!(await waitForChange(before))) break;
       const page = readTable(activePane());
       if (page) rows.push(...page.rows);
+      onPage(pagesRead + 1);
     }
     // Go back to page 1 so the page looks as the teacher left it.
     activePane()?.querySelector(".ant-pagination-item-1")?.click();
@@ -119,7 +120,7 @@
         await sleep(100);
       await sleep(600);
       if ((activePane()?.innerText || "") === before && i > 0) await sleep(800);
-      sections[name] = await readAllPages(activePane());
+      sections[name] = await readAllPages(activePane(), (page) => onProgress(`${i + 1}/${tabs.length}: ${name}, page ${page}`));
     }
     original?.click();
     return {

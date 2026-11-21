@@ -220,9 +220,19 @@ export function AcademicRecords({ user }) {
   const [records, setRecords] = useState(null),
     [error, setError] = useState(""),
     [reload, setReload] = useState(0),
-    [editing, setEditing] = useState(null);
+    [editing, setEditing] = useState(null),
+    [query, setQuery] = useState(""),
+    [status, setStatus] = useState("all"),
+    [course, setCourse] = useState("all");
   const refresh = () => setReload((n) => n + 1);
   const gradeAction = useGradeActions(refresh, setError);
+  const courses = [...new Map((records || []).map((r) => [r.code, r.code + " — " + r.title])).entries()];
+  const visible = (records || []).filter(
+    (r) =>
+      (status === "all" || (status === "published") === Boolean(r.published_at)) &&
+      (course === "all" || r.code === course) &&
+      (!query.trim() || `${r.student_name} ${r.assessment}`.toLowerCase().includes(query.trim().toLowerCase())),
+  );
   useEffect(() => {
     let active = true;
     api("/portal/academic-records")
@@ -273,6 +283,36 @@ export function AcademicRecords({ user }) {
       ) : records === null ? (
         <p className="empty">Loading records…</p>
       ) : records.length ? (
+        <>
+        {teacher && (
+          <div className="grade-filters" role="search">
+            <input
+              type="search"
+              aria-label="Search students or assessments"
+              placeholder="Search student or assessment"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select aria-label="Course" value={course} onChange={(e) => setCourse(e.target.value)}>
+              <option value="all">All courses</option>
+              {courses.map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="all">All statuses</option>
+              <option value="published">Published</option>
+              <option value="unpublished">Not published</option>
+            </select>
+            <span className="muted grade-count">
+              {visible.length} of {records.length}
+            </span>
+          </div>
+        )}
+        {!visible.length && <p className="muted">No grades match these filters.</p>}
+        {visible.length > 0 && (
         <div className="panel table-scroll">
           <table>
             <thead>
@@ -287,7 +327,7 @@ export function AcademicRecords({ user }) {
               </tr>
             </thead>
             <tbody>
-              {records.map((r) => (
+              {visible.map((r) => (
                 <tr key={`${r.course_id}-${r.student_id}-${r.assessment}`}>
                   <td>
                     <strong>{r.code}</strong>
@@ -299,7 +339,7 @@ export function AcademicRecords({ user }) {
                   <td>{r.score ?? "—"}</td>
                   <td>{r.feedback || "—"}</td>
                   <td>
-                    <span className={r.published_at ? "tag" : "tag neutral"}>
+                    <span className={r.published_at ? "status ok" : "status muted"}>
                       {r.published_at ? "Published" : "Unpublished"}
                     </span>
                   </td>
@@ -338,6 +378,8 @@ export function AcademicRecords({ user }) {
             </tbody>
           </table>
         </div>
+        )}
+        </>
       ) : (
         <EmptyState
           title="No assessment records yet"

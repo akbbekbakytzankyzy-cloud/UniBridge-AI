@@ -23,13 +23,19 @@ const SECTION_LABELS = {
   projects: "Research projects",
   materials: "Developments (textbooks, courses, service)",
 };
+// Tabs on the publication list. Each tab groups the statuses it shows.
+const PUB_GROUPS = {
+  verified: { label: "Verified", statuses: ["verified", "translated", "found"] },
+  check: { label: "To check", statuses: ["check"] },
+  skipped: { label: "Duplicates and existing", statuses: ["duplicate", "exists"] },
+};
 const STATUS = {
-  verified: { label: "✓ Verified by DOI", cls: "tag" },
-  translated: { label: "✓ English title in registry", cls: "tag" },
-  found: { label: "✓ DOI found by title", cls: "tag" },
-  check: { label: "Check", cls: "tag warn" },
-  duplicate: { label: "Duplicate in DU", cls: "tag neutral" },
-  exists: { label: "Already added", cls: "tag neutral" },
+  verified: { label: "✓ Verified by DOI", cls: "status ok" },
+  translated: { label: "✓ English title in registry", cls: "status ok" },
+  found: { label: "✓ DOI found by title", cls: "status info" },
+  check: { label: "Check", cls: "status warn" },
+  duplicate: { label: "Duplicate in DU", cls: "status muted" },
+  exists: { label: "Already added", cls: "status muted" },
 };
 
 export default function DuImportReview({ importId, onApplied }) {
@@ -39,7 +45,8 @@ export default function DuImportReview({ importId, onApplied }) {
     [pubs, setPubs] = useState({}),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(true);
+    [busy, setBusy] = useState(true),
+    [pubGroup, setPubGroup] = useState("verified");
 
   useEffect(() => {
     let active = true;
@@ -107,6 +114,16 @@ export default function DuImportReview({ importId, onApplied }) {
       </p>
     );
   const s = data.summary;
+  const toggleGroup = (key, on) =>
+    setPubs((prev) => ({
+      ...prev,
+      ...Object.fromEntries(
+        data.publications
+          .map((p, i) => [i, p])
+          .filter(([, p]) => PUB_GROUPS[key].statuses.includes(p.status))
+          .map(([i]) => [i, on]),
+      ),
+    }));
   const toggleAllPubs = (status, on) =>
     setPubs((p) => ({
       ...p,
@@ -190,24 +207,39 @@ export default function DuImportReview({ importId, onApplied }) {
       })}
 
       <h3>Publications ({data.publications.length})</h3>
+      <div className="pub-tabs" role="tablist" aria-label="Filter publications">
+        {Object.entries(PUB_GROUPS).map(([key, group]) => {
+          const count = data.publications.filter((p) => group.statuses.includes(p.status)).length;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={pubGroup === key}
+              className={pubGroup === key ? "pub-tab active" : "pub-tab"}
+              onClick={() => setPubGroup(key)}
+            >
+              {group.label} <span className="pub-count">{count}</span>
+            </button>
+          );
+        })}
+      </div>
       <div className="button-group">
         <button
           type="button"
           className="secondary"
-          onClick={() => toggleAllPubs("check", false)}
+          disabled={busy || !data.publications.some((p) => PUB_GROUPS.verified.statuses.includes(p.status))}
+          onClick={() => toggleGroup("verified", true)}
         >
-          Untick “Check”
+          Select all verified
         </button>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => toggleAllPubs("check", true)}
-        >
-          Tick “Check”
+        <button type="button" className="secondary" disabled={busy} onClick={() => toggleGroup(pubGroup, false)}>
+          Clear this tab
         </button>
       </div>
       <ol className="du-pubs">
         {data.publications.map((p, i) => {
+          if (!PUB_GROUPS[pubGroup].statuses.includes(p.status)) return null;
           const st = STATUS[p.status] || STATUS.check;
           const locked = p.status === "duplicate" || p.status === "exists";
           return (
