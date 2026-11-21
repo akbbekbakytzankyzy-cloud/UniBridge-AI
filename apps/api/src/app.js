@@ -12,6 +12,11 @@ import { z } from "zod";
 import { facultyRouter } from "./faculty.js";
 import { portalRouter } from "./portal.js";
 import { teachingRouter } from "./teaching.js";
+import {
+  onedriveCallbackRouter,
+  onedriveConfig,
+  onedriveRouter,
+} from "./onedrive.js";
 import { extractionRouter } from "./extraction.js";
 import { autofillRouter } from "./autofill.js";
 import { fieldMappingRouter } from "./field-mapping.js";
@@ -34,9 +39,15 @@ export async function createApp(
     staticDir = null,
     allowRegistration = false,
     nativeCaptureToken = "",
+    onedrive = {},
   } = {},
 ) {
   const app = express();
+  const onedriveCfg = onedriveConfig(process.env, {
+    redirectUri: `${origin}/api/onedrive-callback`,
+    ...onedrive,
+  });
+  app.locals.onedrive = onedriveCfg;
   const dummyHash = await hashPassword(newToken());
   const cookieOptions = {
     httpOnly: true,
@@ -74,6 +85,7 @@ export async function createApp(
     "/api/browser-import",
     browserCaptureRouter(pool, nativeCaptureToken),
   );
+  app.use("/api/onedrive-callback", onedriveCallbackRouter(pool, onedriveCfg));
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
     if (
@@ -196,6 +208,7 @@ export async function createApp(
   app.use("/api/browser-imports", browserImportsRouter(pool));
   app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal/teaching", teachingRouter(pool));
+  app.use("/api/onedrive", onedriveRouter(pool, onedriveCfg));
   app.use("/api/portal", portalRouter(pool));
   app.get("/api/courses", async (req, res) => {
     const { rows } = await pool.query(

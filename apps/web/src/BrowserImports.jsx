@@ -23,8 +23,9 @@ function Source({ item, refresh }) {
   }
   return (
     <article className="panel">
+      {item.origin === "onedrive" && <span className="tag">OneDrive</span>}{" "}
       <a href={item.source_url} target="_blank" rel="noopener noreferrer">
-        {item.source_url}
+        {item.title || item.source_url}
       </a>
       <p>
         {item.status === "accepted"

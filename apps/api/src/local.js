@@ -8,6 +8,7 @@ import { applyMigrations } from "./migrations.js";
 import { createApp } from "./app.js";
 import { hashPassword, newToken } from "./security.js";
 import { backupLocalDatabase } from "./local-backup.js";
+import { syncAll } from "./onedrive.js";
 import dotenv from "dotenv";
 dotenv.config({
   path: fileURLToPath(new URL("../../../.env", import.meta.url)),
@@ -96,12 +97,30 @@ try {
   // Save a consistent restore point before serving requests on each startup.
   await backupLocalDatabase(db, new URL(`backups/${directory}/`, data));
   console.log("Local database snapshot saved under data/backups.");
+  // Key that encrypts stored Microsoft sign-ins; kept beside the database, never in Git.
+  let secretKey = process.env.UB_SECRET_KEY || "";
+  if (!secretKey) {
+    const keyFile = new URL("secret.key", data);
+    secretKey = (await readFile(keyFile, "utf8").catch(() => "")).trim();
+    if (!secretKey) {
+      secretKey = newToken();
+      await writeFile(keyFile, secretKey + "\n", { mode: 0o600 });
+    }
+  }
   app = await createApp(db, {
     origin,
     staticDir,
     allowRegistration: process.env.UB_ALLOW_REGISTRATION !== "0",
     nativeCaptureToken,
+    onedrive: { secretKey },
   });
+  // Automatic OneDrive sync for connected teachers (default every 15 minutes).
+  const minutes = Number(process.env.UB_ONEDRIVE_SYNC_MINUTES || 15);
+  if (app.locals.onedrive.clientId && minutes > 0)
+    setInterval(
+      () => syncAll(db, app.locals.onedrive).catch(() => {}),
+      minutes * 60000,
+    ).unref();
   console.log(
     `Local embedded PostgreSQL preview on port ${port}. Credentials: ${fileURLToPath(new URL("local-access.txt", data))}. This is not the Docker service.`,
   );

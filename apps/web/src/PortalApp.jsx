@@ -590,7 +590,11 @@ function PlannedAcademicPage({ page }) {
 export default function PortalApp() {
   const [user, setUser] = useState(null),
     [loading, setLoading] = useState(true),
-    [page, setPage] = useState("Dashboard"),
+    [page, setPage] = useState(() =>
+      new URLSearchParams(window.location.search).has("onedrive")
+        ? "University accounts"
+        : "Dashboard",
+    ),
     [summary, setSummary] = useState(null),
     [error, setError] = useState(""),
     [search, setSearch] = useState(""),

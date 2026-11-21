@@ -96,7 +96,7 @@ export function browserImportsRouter(pool) {
   );
   router.get("/", async (req, res) => {
     const { rows } = await pool.query(
-      "SELECT id,source_url,content,status,created_at FROM browser_imports WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
+      "SELECT id,source_url,content,status,origin,title,created_at FROM browser_imports WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
       [req.user.id],
     );
     res.json({ imports: rows });

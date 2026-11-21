@@ -1917,3 +1917,35 @@ td {
 .text-button.danger {
   color: #c2410c;
 }
+/* OneDrive automatic import */
+.onedrive-panel {
+  margin: 16px 0;
+}
+.onedrive-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0;
+}
+.onedrive-facts dt {
+  font-size: 11px;
+  color: var(--muted, #6b7280);
+}
+.onedrive-facts dd {
+  margin: 2px 0 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.folder-picker {
+  margin-top: 12px;
+  border-top: 1px solid var(--line, #e5e7eb);
+  padding-top: 12px;
+}
+.folder-picker ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 12px;
+}
+.folder-picker li {
+  padding: 4px 0;
+}
