@@ -2253,3 +2253,15 @@ tbody tr:hover td {
     max-width: none;
   }
 }
+
+/* Link buttons on the accounts page */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.actions button {
+  padding: 9px 13px;
+  font-size: 13px;
+}
