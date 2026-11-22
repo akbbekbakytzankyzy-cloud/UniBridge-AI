@@ -677,14 +677,9 @@ export function AIWorkspace({ teacher = false }) {
             names[0]?.name ||
             "",
       );
+      // Cloud is offered first: prefer it whenever it is configured.
       if (!messages.length)
-        setMode(
-          data.defaultProvider === "cloud" && data.cloud?.available
-            ? "cloud"
-            : data.local?.available || !data.cloud?.available
-              ? "local"
-              : "cloud",
-        );
+        setMode(data.cloud?.available ? "cloud" : "local");
     } catch (e) {
       setError(e.message);
     }
@@ -750,21 +745,22 @@ export function AIWorkspace({ teacher = false }) {
           <div className="seg" role="group" aria-label="Where the assistant runs">
             <button
               type="button"
+              className={cloud ? "on" : ""}
+              aria-pressed={cloud}
+              disabled={locked || !connection?.cloud?.available}
+              title={connection?.cloud?.available ? "Claude in the cloud" : connection?.cloud?.error}
+              onClick={() => setMode("cloud")}
+            >
+              Cloud
+            </button>
+            <button
+              type="button"
               className={!cloud ? "on" : ""}
               aria-pressed={!cloud}
               disabled={locked}
               onClick={() => setMode("local")}
             >
               Local
-            </button>
-            <button
-              type="button"
-              className={cloud ? "on" : ""}
-              aria-pressed={cloud}
-              disabled={locked}
-              onClick={() => setMode("cloud")}
-            >
-              Cloud
             </button>
           </div>
           {!cloud && (

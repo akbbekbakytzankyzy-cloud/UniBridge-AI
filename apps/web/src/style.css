@@ -1,5 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 :root {
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family: Inter, "Segoe UI", system-ui, Arial, sans-serif;
   color: #23334d;
   background: #f4f6fa;
   font-synthesis: none;
@@ -2589,4 +2590,72 @@ tbody tr:hover td {
 }
 .composer .send:disabled {
   opacity: 0.4;
+}
+
+/* ---------- Alerts (one consistent style for every banner) ---------- */
+.error,
+.connection-error,
+.notice,
+p[role="alert"],
+p[role="status"].notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 100%;
+}
+.error,
+p[role="alert"]:not(.notice) {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.connection-error {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+  margin: 0;
+  border-radius: 0;
+  justify-content: center;
+}
+.notice {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+.error:empty,
+.notice:empty {
+  display: none;
+}
+
+/* ---------- Global polish ---------- */
+body {
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+}
+.panel {
+  border-radius: 16px;
+  border: 1px solid #e6ebf2;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.sidebar .nav-label,
+.sidebar-footer small {
+  letter-spacing: 0.06em;
+}
+.sidebar .nav {
+  border-radius: 10px;
+  font-weight: 500;
+}
+.sidebar .nav.active {
+  font-weight: 600;
+}
+button {
+  font-weight: 600;
 }

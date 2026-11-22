@@ -40,7 +40,9 @@ function Brand() {
     <div className="brand">
       <span className="brand-symbol">
         <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M7 22V10h5v12M20 22V10h5v12M7 16h18M12 10l4-4 4 4" />
+          <path d="M16 7.5 29 12.5 16 17.5 3 12.5Z" />
+          <path d="M9 15v5.2c0 1.9 3.1 3.6 7 3.6s7-1.7 7-3.6V15" />
+          <path d="M26.5 13.8V21" />
         </svg>
       </span>
       <div>
