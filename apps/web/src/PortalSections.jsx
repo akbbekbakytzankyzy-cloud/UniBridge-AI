@@ -644,48 +644,47 @@ export function StudentProfile({ user }) {
   );
 }
 export function AIWorkspace({ teacher = false }) {
-  const [cloudConsent, setCloudConsent] = useState(false);
-  const [grounded, setGrounded] = useState(teacher);
-  const [prompt, setPrompt] = useState("");
-  const [messages, setMessages] = useState([]);
   const [connection, setConnection] = useState(null);
   const [mode, setMode] = useState("local");
-  const cloud = mode === "cloud";
-  const localModels = (connection?.models || []).filter(
-    (m) => m.provider === "local",
-  );
   const [model, setModel] = useState("");
+  const [grounded, setGrounded] = useState(teacher);
+  const [cloudConsent, setCloudConsent] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const cloud = mode === "cloud";
+  const locals = (connection?.models || []).filter((m) => m.provider === "local");
   const activeModel = cloud
     ? connection?.cloud?.available
       ? connection.cloud.model
       : ""
     : model;
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const online = cloud ? connection?.cloud?.available : connection?.local?.available;
+  const locked = busy || messages.length > 0;
+
   const refresh = async () => {
     try {
       const data = await api("/ai/status");
       setConnection(data);
-      const locals = data.models.filter((m) => m.provider === "local");
+      const names = data.models.filter((m) => m.provider === "local");
       setModel((current) =>
-        locals.some((m) => m.name === current)
+        names.some((m) => m.name === current)
           ? current
-          : locals.find((m) => m.name === "qwen3:4b")?.name ||
-            locals.find((m) => m.name === "qwen3:1.7b")?.name ||
-            locals[0]?.name ||
+          : names.find((m) => m.name === "qwen3:4b")?.name ||
+            names.find((m) => m.name === "qwen3:1.7b")?.name ||
+            names[0]?.name ||
             "",
       );
-      setMode((current) =>
-        messages.length
-          ? current
-          : data.defaultProvider === "cloud" && data.cloud?.available
+      if (!messages.length)
+        setMode(
+          data.defaultProvider === "cloud" && data.cloud?.available
             ? "cloud"
-            : data.local?.available
+            : data.local?.available || !data.cloud?.available
               ? "local"
-              : data.cloud?.available
-                ? "cloud"
-                : "local",
-      );
+              : "cloud",
+        );
     } catch (e) {
       setError(e.message);
     }
@@ -693,22 +692,15 @@ export function AIWorkspace({ teacher = false }) {
   useEffect(() => {
     refresh();
   }, []);
-  const ideas = grounded
-    ? [
-        "Сколько у меня публикаций и за какие годы?",
-        "List my publications from 2024 with their DOIs.",
-        "Which of my publications are not verified yet?",
-      ]
-    : [
-        "Explain precision, recall and F1 with a simple example.",
-        "Help me draft an academic project introduction.",
-        "What evidence is needed to match a publication to an author?",
-      ];
+
+  const suggestions = grounded
+    ? ["How many publications do I have, and from which years?", "Which of my publications are not verified yet?"]
+    : ["What can I do in UniBridgeAI?", "What should I update in my profile?"];
+
   async function send(e) {
-    e.preventDefault();
-    if (busy || !prompt.trim()) return;
+    e?.preventDefault();
+    if (busy || !prompt.trim() || !activeModel) return;
     const question = prompt.trim();
-    // Keep five complete turns, followed by the new question.
     const context = [
       ...messages.slice(-10).map(({ role, content }) => ({ role, content })),
       { role: "user", content: question },
@@ -740,241 +732,193 @@ export function AIWorkspace({ teacher = false }) {
         },
       ]);
       setPrompt("");
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setBusy(false);
     }
   }
+
   return (
-    <>
-      <PageHeading
-        eyebrow="UNIBRIDGE INTELLIGENCE"
-        title="AI workspace"
-        description="Ask your AI assistant in English, Russian or Kazakh."
-      />
-      <section className="panel ai-chat">
-        <div
-          className="ai-mode"
-          role="radiogroup"
-          aria-label="Where the assistant runs"
-        >
-          {[
-            ["local", "Local", "Ollama on this computer"],
-            [
-              "cloud",
-              "Cloud",
-              connection?.cloud?.model || "Claude via OpenRouter",
-            ],
-          ].map(([id, label, hint]) => (
-            <button
-              key={id}
-              type="button"
-              role="radio"
-              aria-checked={mode === id}
-              className={mode === id ? "active" : ""}
-              disabled={busy || messages.length > 0}
-              onClick={() => {
-                setMode(id);
-                setCloudConsent(false);
-              }}
-            >
-              <strong>{label}</strong>
-              <small>{hint}</small>
-            </button>
-          ))}
+    <div className="assistant">
+      <header className="assistant-head">
+        <div>
+          <h1>Assistant</h1>
+          <p>Ask about your records, the app, or what to update.</p>
         </div>
-        <div className="chat-controls">
+        <div className="assistant-controls">
+          <div className="seg" role="group" aria-label="Where the assistant runs">
+            <button
+              type="button"
+              className={!cloud ? "on" : ""}
+              aria-pressed={!cloud}
+              disabled={locked}
+              onClick={() => setMode("local")}
+            >
+              Local
+            </button>
+            <button
+              type="button"
+              className={cloud ? "on" : ""}
+              aria-pressed={cloud}
+              disabled={locked}
+              onClick={() => setMode("cloud")}
+            >
+              Cloud
+            </button>
+          </div>
           {!cloud && (
-            <label>
-              Local model
-              <select
-                aria-label="Local model"
-                value={model}
-                disabled={busy || messages.length > 0}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                {!model && <option value="">No local model available</option>}
-                {localModels.map((m) => (
-                  <option key={m.name}>{m.name}</option>
-                ))}
-              </select>
-            </label>
+            <select
+              className="assistant-model"
+              aria-label="Local model"
+              value={model}
+              disabled={locked}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              {!model && <option value="">No local model</option>}
+              {locals.map((m) => (
+                <option key={m.name}>{m.name}</option>
+              ))}
+            </select>
           )}
+          <span className={"assistant-status " + (online ? "ok" : "off")} title={online ? "Connected" : "Not connected"}>
+            {online ? "Connected" : "Not connected"}
+          </span>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Settings"
+            aria-expanded={settingsOpen}
+            onClick={() => setSettingsOpen((v) => !v)}
+          >
+            <Icon name="help" size={18} />
+          </button>
+        </div>
+      </header>
+
+      {settingsOpen && (
+        <section className="assistant-settings" aria-label="Assistant settings">
           {teacher && (
-            <label className="inline-check">
+            <label className="check">
               <input
                 type="checkbox"
                 checked={grounded}
-                disabled={busy || messages.length > 0}
+                disabled={locked}
                 onChange={(e) => setGrounded(e.target.checked)}
               />
-              Answer from my profile and publications
+              Use my profile and publications
             </label>
           )}
-          <button type="button" disabled={busy} onClick={refresh}>
-            Refresh connection
-          </button>
-          <button
-            type="button"
-            disabled={busy || !messages.length}
-            onClick={() => {
-              setMessages([]);
-              setCloudConsent(false);
-              setError("");
-            }}
-          >
-            New chat
-          </button>
-        </div>
-        <p role="status">
-          {connection === null
-            ? "Checking AI configuration…"
-            : cloud
-              ? connection.cloud?.available
-                ? `Cloud: ${connection.cloud.model} via OpenRouter`
-                : connection.cloud?.error
-              : connection.local?.available
-                ? model
-                  ? `Local: ${model} via Ollama`
-                  : "Ollama is running. Download a local chat model first."
-                : connection.local?.error}
-        </p>
-        <p className="chat-note">
-          {cloud
-            ? "Messages and conversation context are sent to OpenRouter and its model provider. Saved records are sent only with your permission below. No passwords or API keys are included."
-            : grounded
-              ? "Answers use your saved UniBridgeAI profile and publication list, sent only to the local model on this computer. Check cited records [P1], [PROFILE] before relying on an answer."
-              : "This preview uses only text you send here. University records and files are not connected."}{" "}
-          Chat history is kept in this page until you leave or start a new chat;
-          the last five turns are sent as context.
-        </p>
-        {connection?.roles && (
-          <details className="ai-roles">
-            <summary>AI roles and models</summary>
-            <ul>
-              {connection.roles.map((r) => (
-                <li key={r.id}>
-                  <strong>{r.title}</strong>
-                  <span>{r.task}</span>
-                  <span className="ai-role-models">
-                    {r.cloud && (
-                      <em className={r.cloudReady ? "ready" : "missing"}>
-                        Cloud: {r.cloud}
-                        {r.cloudReady ? "" : " (key not configured)"}
-                      </em>
-                    )}
-                    {r.local && (
-                      <em className={r.localReady ? "ready" : "missing"}>
-                        Local: {r.local}
-                        {r.localFallback ? ` or ${r.localFallback}` : ""}
-                        {r.localReady || r.id === "assistant"
-                          ? ""
-                          : ` (run: ollama pull ${r.local})`}
-                      </em>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
-        {cloud && grounded && (
-          <label className="inline-check">
-            <input
-              type="checkbox"
-              checked={cloudConsent}
-              disabled={busy || messages.length > 0}
-              onChange={(e) => setCloudConsent(e.target.checked)}
-            />
-            I agree to send selected profile fields and publications to
-            OpenRouter for this conversation.
-          </label>
-        )}
-        {!messages.length && (
-          <div className="prompt-grid">
-            {ideas.map((p) => (
-              <button
-                type="button"
-                className="prompt-card"
-                key={p}
-                disabled={busy}
-                onClick={() => setPrompt(p)}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
-        <div
-          className="chat-messages"
-          role="log"
-          aria-label="Conversation"
-          aria-live="polite"
-        >
-          {messages.map((m, i) => (
-            <article className={"chat-message " + m.role} key={i}>
-              <strong>{m.role === "user" ? "You" : "UniBridgeAI"}</strong>
-              <div>{m.content}</div>
-              {m.grounding && (
-                <small>
-                  Based on your records: {m.grounding.included} of{" "}
-                  {m.grounding.publications} publications included.
-                </small>
-              )}
-              {m.toolsUsed?.length > 0 && (
-                <small>
-                  Looked up in: {m.toolsUsed.join(", ")} (read-only).
-                </small>
-              )}
-              {m.truncated && (
-                <small>
-                  Response reached the length limit. Ask a follow-up to
-                  continue.
-                </small>
-              )}
-            </article>
-          ))}
-          {busy && (
-            <p role="status">
-              Generating a reply… The first response may take longer while the
-              model loads.
-            </p>
+          {cloud && grounded && (
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={cloudConsent}
+                disabled={locked}
+                onChange={(e) => setCloudConsent(e.target.checked)}
+              />
+              Allow sending my selected data to OpenRouter for this chat
+            </label>
           )}
-        </div>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        <form onSubmit={send}>
-          <label>
-            Your message
-            <textarea
-              aria-label="Your message"
-              value={prompt}
-              disabled={busy}
-              onChange={(e) => setPrompt(e.target.value)}
-              maxLength={4000}
-              rows={4}
-              placeholder="Ask a question or paste a short passage…"
-            />
-          </label>
-          <div className="prompt-footer">
-            <span>{prompt.length}/4000 characters</span>
+          <div className="assistant-settings-actions">
+            <button type="button" className="ghost" onClick={refresh} disabled={busy}>
+              Refresh status
+            </button>
             <button
-              disabled={
-                busy ||
-                !activeModel ||
-                !prompt.trim() ||
-                (cloud && grounded && !cloudConsent)
-              }
+              type="button"
+              className="ghost"
+              disabled={busy || !messages.length}
+              onClick={() => {
+                setMessages([]);
+                setCloudConsent(false);
+                setError("");
+              }}
             >
-              {busy ? "Thinking…" : "Send message"}
+              New conversation
             </button>
           </div>
-        </form>
-      </section>
-    </>
+          {connection?.roles && (
+            <details className="assistant-roles">
+              <summary>Models by task</summary>
+              <ul>
+                {connection.roles.map((r) => (
+                  <li key={r.id}>
+                    <strong>{r.title}</strong>
+                    <span>{cloud ? r.cloud || "—" : r.local || "—"}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+          {!online && (
+            <p className="assistant-hint">
+              {cloud ? connection?.cloud?.error : connection?.local?.error}
+            </p>
+          )}
+        </section>
+      )}
+
+      <div className="assistant-thread" role="log" aria-label="Conversation" aria-live="polite">
+        {!messages.length && (
+          <div className="assistant-empty">
+            <p>How can I help?</p>
+            <div className="assistant-suggestions">
+              {suggestions.map((text) => (
+                <button key={text} type="button" onClick={() => setPrompt(text)} disabled={busy}>
+                  {text}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div className={"bubble " + m.role} key={i}>
+            <div className="bubble-text">{m.content}</div>
+            {(m.toolsUsed?.length > 0 || m.grounding || m.truncated) && (
+              <small className="bubble-meta">
+                {m.toolsUsed?.length > 0 && <>Looked up: {m.toolsUsed.join(", ")}. </>}
+                {m.grounding && (
+                  <>Used {m.grounding.included} of {m.grounding.publications} publications. </>
+                )}
+                {m.truncated && <>Reply was cut short.</>}
+              </small>
+            )}
+          </div>
+        ))}
+        {busy && <div className="bubble assistant typing">Thinking…</div>}
+      </div>
+
+      {error && (
+        <p className="assistant-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <form className="composer" onSubmit={send}>
+        <textarea
+          aria-label="Your message"
+          value={prompt}
+          disabled={busy}
+          maxLength={4000}
+          rows={1}
+          placeholder="Write a message"
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+        />
+        <button
+          type="submit"
+          className="send"
+          aria-label="Send"
+          disabled={busy || !activeModel || !prompt.trim() || (cloud && grounded && !cloudConsent)}
+        >
+          <Icon name="arrow" size={18} />
+        </button>
+      </form>
+    </div>
   );
 }

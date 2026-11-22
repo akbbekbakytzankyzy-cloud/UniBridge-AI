@@ -125,28 +125,10 @@ function Login({ onLogin }) {
       <section className="intro">
         <Brand />
         <div className="login-story">
-          <span className="pill">University platform concept</span>
-          <h1>
-            Your university.
-            <br />
-            Connected.
-          </h1>
-          <p>
-            Learning, research and campus services.
-            <br />
-            One workspace built around your academic life.
-          </p>
-          <div className="campus-graphic" aria-hidden="true">
-            <div className="campus-tower t1" />
-            <div className="campus-tower t2" />
-            <div className="campus-tower t3" />
-            <div className="campus-bridge" />
-            <span>LEARN · CONNECT · DISCOVER</span>
-          </div>
+          <h1>Your university, in one place.</h1>
+          <p>Courses, records, research and campus services.</p>
         </div>
-        <div className="login-bottom">
-          Inspired by Astana IT University’s digital ecosystem
-        </div>
+        <div className="login-bottom">Astana IT University · prototype</div>
       </section>
       <section className="signin">
         <p className="eyebrow">WELCOME TO UNIBRIDGEAI</p>
