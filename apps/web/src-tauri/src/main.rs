@@ -292,6 +292,24 @@ fn check_for_update(app: AppHandle, manual: bool) {
 }
 
 #[tauri::command]
+fn open_external_link(url: String) -> Result<(), String> {
+    // Only plain web links; the URL is passed as one argument, never through a shell.
+    let ok = (url.starts_with("https://") || url.starts_with("http://"))
+        && url.len() <= 2048
+        && !url.chars().any(|c| c.is_control() || c.is_whitespace() || c == '"');
+    if !ok {
+        return Err("Only web links can be opened".into());
+    }
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("explorer").arg(&url).spawn();
+    #[cfg(target_os = "macos")]
+    let result = std::process::Command::new("open").arg(&url).spawn();
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    let result = std::process::Command::new("xdg-open").arg(&url).spawn();
+    result.map(|_| ()).map_err(|_| "Could not open the link".to_string())
+}
+
+#[tauri::command]
 fn check_for_updates(app: AppHandle) {
     check_for_update(app, true);
 }
@@ -369,7 +387,7 @@ fn main() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![open_university_browser, capture_university_page, check_for_updates])
+        .invoke_handler(tauri::generate_handler![open_university_browser, capture_university_page, check_for_updates, open_external_link])
         .build(tauri::generate_context!())
         .expect("Failed to launch UniBridgeAI");
     app.run(|handle, event| {

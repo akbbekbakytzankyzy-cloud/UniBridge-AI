@@ -4,6 +4,7 @@ fn main() {
             "open_university_browser",
             "capture_university_page",
             "check_for_updates",
+            "open_external_link",
         ]),
     );
     tauri_build::try_build(attributes).expect("failed to configure Tauri permissions");

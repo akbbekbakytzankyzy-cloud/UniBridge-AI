@@ -11,5 +11,5 @@
       "http://127.0.0.1:5173/*"
     ]
   },
-  "permissions": ["allow-open-university-browser", "allow-check-for-updates"]
+  "permissions": ["allow-open-university-browser", "allow-check-for-updates", "allow-open-external-link"]
 }
