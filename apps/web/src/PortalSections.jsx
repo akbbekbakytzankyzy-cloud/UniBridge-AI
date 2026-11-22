@@ -643,7 +643,9 @@ export function StudentProfile({ user }) {
     </>
   );
 }
-export function AIWorkspace({ teacher = false }) {
+// The assistant side panel. It knows the page the user is on and sends that
+// label with each question. Cloud is offered first, local second.
+export function AIWorkspace({ teacher = false, page = "", onClose }) {
   const [connection, setConnection] = useState(null);
   const [mode, setMode] = useState("local");
   const [model, setModel] = useState("");
@@ -715,6 +717,7 @@ export function AIWorkspace({ teacher = false }) {
             ? "my_records"
             : "tools",
         cloudConsent,
+        context: page || undefined,
       });
       setMessages((previous) => [
         ...previous,
@@ -738,8 +741,8 @@ export function AIWorkspace({ teacher = false }) {
     <div className="assistant">
       <header className="assistant-head">
         <div>
-          <h1>Assistant</h1>
-          <p>Ask about your records, the app, or what to update.</p>
+          <h2>AI assistant</h2>
+          <p className="assistant-context">Looking at: {page || "UniBridgeAI"}</p>
         </div>
         <div className="assistant-controls">
           <div className="seg" role="group" aria-label="Where the assistant runs">
@@ -789,6 +792,11 @@ export function AIWorkspace({ teacher = false }) {
           >
             <Icon name="help" size={18} />
           </button>
+          {onClose && (
+            <button type="button" className="icon-btn" aria-label="Close assistant" onClick={onClose}>
+              ×
+            </button>
+          )}
         </div>
       </header>
 

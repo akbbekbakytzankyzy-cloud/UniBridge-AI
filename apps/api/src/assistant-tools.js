@@ -32,7 +32,7 @@ const HELP = {
   publications: "Publications: import ORCID and OpenAlex works, or add one manually. Imported records start as unverified.",
   imports: "University accounts: keep your DU/LMS/MyDU login notes and import pages you open yourself in the desktop app. Accepted pages can be read into draft records.",
   drafts: "Drafts to confirm: records read from a page. Nothing is saved to your records until you confirm it.",
-  ai: "AI workspace: ask questions about your records. Choose Local (Ollama on this computer) or Cloud (Claude via OpenRouter). Cloud use asks for consent first.",
+  ai: "AI assistant: the floating Assistant button (bottom left) opens a side panel next to the page. Ask about your records or the app. Choose Cloud (Claude via OpenRouter, offered first) or Local (Ollama on this computer). Cloud use asks for consent first.",
   courses: "My courses: teachers create courses, enrol students and publish materials.",
   forms: "Department forms: private CSV or JSON snapshots of your saved profile and publications.",
 };

@@ -206,7 +206,7 @@ export async function createApp(
   app.use("/api/extraction", extractionRouter({ pool, ai: aiClient }));
   app.use("/api/autofill", autofillRouter({ pool, ai: aiClient }));
   app.use("/api/field-mapping", fieldMappingRouter({ pool, ai: aiClient }));
-  app.use("/api/browser-imports", browserImportsRouter(pool));
+  app.use("/api/browser-imports", browserImportsRouter(pool, { ai: aiClient }));
   app.use("/api/faculty", facultyRouter(pool, { fetcher: scholarlyFetch }));
   app.use("/api/portal/teaching", teachingRouter(pool));
   app.use("/api/onedrive", onedriveRouter(pool, onedriveCfg));

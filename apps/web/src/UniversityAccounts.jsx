@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import BrowserImports, { DraftsToConfirm } from "./BrowserImports.jsx";
 import FieldMapping from "./FieldMapping.jsx";
 import OneDriveSync from "./OneDriveSync.jsx";
+import ImportHistory, { ImportAllPanel } from "./ImportHistory.jsx";
 
 export default function UniversityAccounts() {
   const [data, setData] = useState(null);
@@ -54,6 +55,7 @@ export default function UniversityAccounts() {
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
+      <ImportAllPanel onDone={() => setImports((n) => n + 1)} />
       <OneDriveSync onSynced={() => setImports((n) => n + 1)} />
       <BrowserImports key={imports} />
       <DraftsToConfirm />
@@ -105,6 +107,7 @@ export default function UniversityAccounts() {
           </form>
         );
       })}
+      <ImportHistory key={`history-${imports}`} />
     </section>
   );
 }

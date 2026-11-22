@@ -1,6 +1,6 @@
 # Local Ollama chat
 
-AI workspace now calls the authenticated Express API, which calls local Ollama:
+The Assistant panel now calls the authenticated Express API, which calls local Ollama:
 
 React :5173 -> POST /api/ai/chat on :3001 -> http://127.0.0.1:11434/api/chat -> local model.
 
@@ -8,7 +8,7 @@ The course Setup Runbook and W2 Lab Guide use local Ollama, /api/tags and qwen3:
 
 ## Use
 
-Start the Ollama application. Install the course model with `ollama pull qwen3:1.7b` if needed. Check `curl.exe http://127.0.0.1:11434/api/tags`. Start UniBridgeAI with `npm run dev:local`, sign in, open AI workspace, and select qwen3:1.7b. The selector prefers this model when installed. Refresh connection after adding a model. Model changes require a new chat.
+Start the Ollama application. Install the course model with `ollama pull qwen3:1.7b` if needed. Check `curl.exe http://127.0.0.1:11434/api/tags`. Start UniBridgeAI with `npm run dev:local`, sign in, open the Assistant panel (bottom-left button), and select qwen3:1.7b. The selector prefers this model when installed. Refresh connection after adding a model. Model changes require a new chat.
 
 ## Scope
 
@@ -38,7 +38,7 @@ Recovery completed on 16 November: the active local config now selects `local-pr
 
 ## Answers from your own records (added 16 November 2026)
 
-Teachers can tick **Answer from my profile and publications** in AI workspace. For each question the API reads the signed-in teacher's own faculty profile and publication list from the database and sends them to the local model as a bounded RECORDS block (about 14,000 characters, `num_ctx` 8192, `temperature` 0, fixed `seed`). Nothing is fine-tuned or cached in the model; the database is the only source of truth, so answers change as soon as records change.
+Teachers can tick **Use my profile and publications** in the Assistant panel. For each question the API reads the signed-in teacher's own faculty profile and publication list from the database and sends them to the local model as a bounded RECORDS block (about 14,000 characters, `num_ctx` 8192, `temperature` 0, fixed `seed`). Nothing is fine-tuned or cached in the model; the database is the only source of truth, so answers change as soon as records change.
 
 - Included: names, department, position, degree, academic title, ORCID/OpenAlex IDs, education (without diploma numbers), training (without certificate references), awards, and publications with year, venue, DOI, authors, source and verification status.
 - Excluded: phone, hire date, employment fraction, diploma and certificate references.

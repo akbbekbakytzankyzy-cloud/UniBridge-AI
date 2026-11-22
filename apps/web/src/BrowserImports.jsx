@@ -9,6 +9,15 @@ function Source({ item, refresh }) {
     "Summarise my education, publications and achievements from this source. Cite [S1].",
   );
   const [answer, setAnswer] = useState("");
+  const [fullText, setFullText] = useState(null);
+  const loadFullText = async (e) => {
+    if (!e.currentTarget.open || fullText !== null) return;
+    try {
+      setFullText((await api(`/browser-imports/${item.id}`)).import.content);
+    } catch (err) {
+      setFullText("Could not load the text: " + err.message);
+    }
+  };
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function act(action) {
@@ -23,7 +32,7 @@ function Source({ item, refresh }) {
     }
   }
   // A full DU profile gets its own structured review instead of raw text.
-  if (item.content?.startsWith('{"format":"du-teacher-v1"'))
+  if (item.kind === "du-profile")
     return (
       <article className="panel">
         <span className="tag">DU profile</span>{" "}
@@ -64,10 +73,10 @@ function Source({ item, refresh }) {
           : "Pending your review"}{" "}
         · {new Date(item.created_at).toLocaleString()}
       </p>
-      <details>
+      <details onToggle={loadFullText}>
         <summary>Review imported text</summary>
         <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-          {item.content}
+          {fullText ?? "Loading…"}
         </pre>
       </details>
       {item.status === "pending" && (
