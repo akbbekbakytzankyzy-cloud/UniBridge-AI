@@ -601,6 +601,13 @@ export default function PortalApp() {
     [error, setError] = useState(""),
     [search, setSearch] = useState(""),
     [menu, setMenu] = useState(false),
+    [collapsed, setCollapsed] = useState(() => {
+      try {
+        return JSON.parse(localStorage.getItem("ub-nav-collapsed") || "{}");
+      } catch {
+        return {};
+      }
+    }),
     [dirty, setDirty] = useState(false),
     [signingOut, setSigningOut] = useState(false);
   useEffect(() => {
@@ -690,6 +697,16 @@ export default function PortalApp() {
       ],
     },
   ];
+  // Remember which sections the user collapsed; the section with the open page stays open.
+  const toggleGroup = (title) => {
+    const next = { ...collapsed, [title]: !collapsed[title] };
+    try {
+      localStorage.setItem("ub-nav-collapsed", JSON.stringify(next));
+    } catch {
+      /* storage unavailable: the choice lasts for this session only */
+    }
+    return next;
+  };
   const pageLabel = (p) =>
     p === "Academic records" ? (teacher ? "Gradebook" : "Academic record") : p;
   const matches = groups
@@ -734,9 +751,25 @@ export default function PortalApp() {
           </div>
         </div>
         <nav aria-label="Main navigation">
-          {groups.map((g) => (
-            <div className="nav-group" key={g.title}>
-              <p className="nav-label">{g.title}</p>
+          {groups.map((g) => {
+            const open = search ? true : !collapsed[g.title];
+            const holdsPage = g.items.some(([name]) => name === page);
+            return (
+            <div
+              className={"nav-group" + (open ? " is-open" : " is-collapsed") + (holdsPage ? " has-active" : "")}
+              key={g.title}
+            >
+              <button
+                type="button"
+                className="nav-label nav-toggle"
+                aria-expanded={open}
+                aria-controls={"nav-" + g.title}
+                onClick={() => setCollapsed(toggleGroup(g.title))}
+              >
+                <span>{g.title}</span>
+                <Icon name="chevron" size={14} />
+              </button>
+              <div id={"nav-" + g.title} hidden={!open}>
               {g.items.map(([name, icon]) => (
                 <button
                   key={name}
@@ -751,8 +784,10 @@ export default function PortalApp() {
                   )}
                 </button>
               ))}
+              </div>
             </div>
-          ))}
+            );
+          })}
         </nav>
         <div className="sidebar-footer">
           <div className="avatar">{user.name.slice(0, 1)}</div>

@@ -2265,3 +2265,29 @@ tbody tr:hover td {
   padding: 9px 13px;
   font-size: 13px;
 }
+.nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 10px 12px 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.nav-toggle:hover {
+  background: none;
+  color: var(--ink, #1e293b);
+}
+.nav-toggle svg {
+  transition: transform 0.15s ease;
+  flex: none;
+}
+.nav-group.is-collapsed .nav-toggle svg {
+  transform: rotate(-90deg);
+}
+.nav-group.is-collapsed.has-active .nav-toggle {
+  color: var(--blue, #2563eb);
+}
