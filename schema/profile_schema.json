@@ -22,7 +22,10 @@
     { "key": "degree_field", "label": "Degree field" },
     { "key": "academic_title", "label": "Academic title" },
     { "key": "orcid", "label": "ORCID (0000-0000-0000-0000)" },
-    { "key": "openalex_id", "label": "OpenAlex author ID (A123...)" }
+    { "key": "openalex_id", "label": "OpenAlex author ID (A123...)" },
+    { "key": "scopus_author_id", "label": "Scopus Author ID" },
+    { "key": "wos_researcher_id", "label": "Web of Science ResearcherID" },
+    { "key": "google_scholar_url", "label": "Google Scholar profile URL" }
   ],
   "collections": {
     "education": {
@@ -64,6 +67,38 @@
           "key": "evidence_reference",
           "label": "Evidence reference (no upload)"
         }
+      ]
+    },
+    "employment": {
+      "label": "Work experience",
+      "fields": [
+        { "key": "organization", "label": "Organization", "required": true },
+        { "key": "position", "label": "Position" },
+        { "key": "from_year", "label": "From", "type": "year" },
+        { "key": "to_year", "label": "To", "type": "year" },
+        { "key": "experience_type", "label": "Experience type" }
+      ]
+    },
+    "projects": {
+      "label": "Research projects",
+      "fields": [
+        {
+          "key": "title",
+          "label": "Title, PI, funding organisation",
+          "required": true
+        },
+        { "key": "from_year", "label": "From", "type": "year" },
+        { "key": "to_year", "label": "To", "type": "year" },
+        { "key": "budget", "label": "Budget" },
+        { "key": "role", "label": "Role" },
+        { "key": "status", "label": "Status" }
+      ]
+    },
+    "materials": {
+      "label": "Teaching materials and service",
+      "fields": [
+        { "key": "title", "label": "Description", "required": true },
+        { "key": "link", "label": "Link" }
       ]
     }
   },

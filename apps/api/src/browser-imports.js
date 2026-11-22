@@ -51,7 +51,7 @@ export function browserCaptureRouter(pool, nativeCaptureToken = "") {
         .object({
           token: z.string().regex(/^[a-f0-9]{64}$/),
           sourceUrl: z.string().max(2000),
-          content: z.string().trim().min(1).max(30000),
+          content: z.string().trim().min(1).max(300000),
         })
         .strict()
         .parse(req.body);
@@ -96,7 +96,7 @@ export function browserImportsRouter(pool) {
   );
   router.get("/", async (req, res) => {
     const { rows } = await pool.query(
-      "SELECT id,source_url,content,status,created_at FROM browser_imports WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
+      "SELECT id,source_url,content,status,origin,title,created_at FROM browser_imports WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
       [req.user.id],
     );
     res.json({ imports: rows });

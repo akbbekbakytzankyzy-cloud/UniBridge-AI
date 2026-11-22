@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import { invoke } from "@tauri-apps/api/core";
+import DuImportReview from "./DuImportReview.jsx";
 
 function Source({ item, refresh }) {
   const [consent, setConsent] = useState(false);
@@ -21,10 +22,41 @@ function Source({ item, refresh }) {
       setBusy(false);
     }
   }
+  // A full DU profile gets its own structured review instead of raw text.
+  if (item.content?.startsWith('{"format":"du-teacher-v1"'))
+    return (
+      <article className="panel">
+        <span className="tag">DU profile</span>{" "}
+        <a href={item.source_url} target="_blank" rel="noopener noreferrer">
+          {item.source_url}
+        </a>
+        <p className="muted">
+          {item.status === "accepted"
+            ? "Added to your profile"
+            : "Waiting for your review"}{" "}
+          · {new Date(item.created_at).toLocaleString()}
+        </p>
+        <DuImportReview importId={item.id} onApplied={refresh} />
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() =>
+            act(async () => {
+              await api(`/browser-imports/${item.id}`, undefined, "DELETE");
+              await refresh();
+            })
+          }
+        >
+          Delete this DU snapshot
+        </button>
+        {error && <p className="error">{error}</p>}
+      </article>
+    );
   return (
     <article className="panel">
+      {item.origin === "onedrive" && <span className="tag">OneDrive</span>}{" "}
       <a href={item.source_url} target="_blank" rel="noopener noreferrer">
-        {item.source_url}
+        {item.title || item.source_url}
       </a>
       <p>
         {item.status === "accepted"

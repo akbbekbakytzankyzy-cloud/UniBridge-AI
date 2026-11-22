@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import BrowserImports, { DraftsToConfirm } from "./BrowserImports.jsx";
 import FieldMapping from "./FieldMapping.jsx";
+import OneDriveSync from "./OneDriveSync.jsx";
 
 export default function UniversityAccounts() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [imports, setImports] = useState(0);
   const load = () => api("/university-accounts").then(setData);
   useEffect(() => {
     load().catch((e) => setError(e.message));
@@ -52,7 +54,8 @@ export default function UniversityAccounts() {
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      <BrowserImports />
+      <OneDriveSync onSynced={() => setImports((n) => n + 1)} />
+      <BrowserImports key={imports} />
       <DraftsToConfirm />
       <FieldMapping />
       {!data && !error && <p>Loading accounts…</p>}

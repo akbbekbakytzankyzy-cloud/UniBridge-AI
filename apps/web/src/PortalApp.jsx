@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { api } from "./api.js";
 import { Icon } from "./icons.jsx";
 import FacultyWorkspace from "./FacultyApp.jsx";
+import { TeacherToday } from "./TeachingTools.jsx";
 import Courses from "./Courses.jsx";
 import UniversityAccounts from "./UniversityAccounts.jsx";
 import {
@@ -413,6 +414,7 @@ function Dashboard({ user, summary, navigate }) {
           </button>
         ))}
       </div>
+      {teacher && <TeacherToday navigate={navigate} />}
       <div className="dashboard-columns">
         <div>
           <section className="panel quick-panel">
@@ -590,7 +592,11 @@ function PlannedAcademicPage({ page }) {
 export default function PortalApp() {
   const [user, setUser] = useState(null),
     [loading, setLoading] = useState(true),
-    [page, setPage] = useState("Dashboard"),
+    [page, setPage] = useState(() =>
+      new URLSearchParams(window.location.search).has("onedrive")
+        ? "University accounts"
+        : "Dashboard",
+    ),
     [summary, setSummary] = useState(null),
     [error, setError] = useState(""),
     [search, setSearch] = useState(""),
@@ -855,7 +861,7 @@ export default function PortalApp() {
           {page === "My courses" && (
             <Courses user={user} onCount={onCourseCount} />
           )}
-          {page === "Timetable" && <Timetable />}
+          {page === "Timetable" && <Timetable user={user} />}
           {page === "Academic records" && <AcademicRecords user={user} />}
           {page === "Services & requests" && <ServiceRequests />}
           {page === "AI workspace" && <AIWorkspace teacher={teacher} />}
@@ -872,6 +878,7 @@ export default function PortalApp() {
               <FacultyWorkspace
                 user={user}
                 tab={facultyPages.includes(page) ? page : "My profile"}
+                visible={facultyPages.includes(page)}
                 onDirtyChange={setDirty}
               />
             </div>

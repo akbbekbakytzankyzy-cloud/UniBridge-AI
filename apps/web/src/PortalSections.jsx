@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import { Icon } from "./icons.jsx";
+import {
+  GradeEditor,
+  TimetableEditor,
+  useGradeActions,
+} from "./TeachingTools.jsx";
 export function EmptyState({ icon = "records", title, description, action }) {
   return (
     <section className="empty-state">
@@ -39,11 +44,22 @@ function monday() {
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   return dateString(d);
 }
-export function Timetable() {
+export function Timetable({ user }) {
+  const teacher = user?.role === "teacher";
   const [from, setFrom] = useState(monday),
     [events, setEvents] = useState([]),
     [error, setError] = useState(""),
-    [loading, setLoading] = useState(true);
+    [loading, setLoading] = useState(true),
+    [reload, setReload] = useState(0);
+  async function removeEvent(e) {
+    if (!window.confirm(`Remove “${e.title}” from the timetable?`)) return;
+    try {
+      await api(`/portal/teaching/timetable/${e.id}`, undefined, "DELETE");
+      setEvents((list) => list.filter((x) => x.id !== e.id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
   const days = Array.from(
     { length: 7 },
     (_, i) => new Date(Date.parse(from) + i * 86400000),
@@ -67,14 +83,31 @@ export function Timetable() {
     return () => {
       active = false;
     };
-  }, [from]);
+  }, [from, reload]);
   return (
     <>
       <PageHeading
         title="Timetable"
         eyebrow="ACADEMICS"
-        description="Your weekly teaching and learning schedule."
+        description={
+          teacher
+            ? "Schedule classes for your courses. Enrolled students see them in their timetable."
+            : "Your weekly teaching and learning schedule."
+        }
       />
+      {teacher && (
+        <TimetableEditor
+          defaultDate={from}
+          onCreated={(e) => {
+            const day = dateString(e.starts_at);
+            const weekStart = dateString(
+              Date.parse(day) - ((new Date(day).getUTCDay() + 6) % 7) * 86400000,
+            );
+            if (weekStart === from) setReload((n) => n + 1);
+            else setFrom(weekStart);
+          }}
+        />
+      )}
       <div className="panel calendar-panel">
         <div className="section-heading">
           <h2>
@@ -155,6 +188,15 @@ export function Timetable() {
                     {e.room || "Room not assigned"}
                   </p>
                 </div>
+                {e.editable && (
+                  <button
+                    type="button"
+                    className="text-button event-remove"
+                    onClick={() => removeEvent(e)}
+                  >
+                    Remove
+                  </button>
+                )}
               </article>
             ))}
           </div>
@@ -162,7 +204,11 @@ export function Timetable() {
           <EmptyState
             icon="calendar"
             title="No timetable entries for this week"
-            description="No classes have been scheduled in UniBridgeAI for these dates. Timetable editing is the next step."
+            description={
+              teacher
+                ? "Use “Add a class” above to schedule one for this week."
+                : "Your teachers have not scheduled classes for these dates yet."
+            }
           />
         )}
       </div>
@@ -170,8 +216,23 @@ export function Timetable() {
   );
 }
 export function AcademicRecords({ user }) {
+  const teacher = user.role === "teacher";
   const [records, setRecords] = useState(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [reload, setReload] = useState(0),
+    [editing, setEditing] = useState(null),
+    [query, setQuery] = useState(""),
+    [status, setStatus] = useState("all"),
+    [course, setCourse] = useState("all");
+  const refresh = () => setReload((n) => n + 1);
+  const gradeAction = useGradeActions(refresh, setError);
+  const courses = [...new Map((records || []).map((r) => [r.code, r.code + " — " + r.title])).entries()];
+  const visible = (records || []).filter(
+    (r) =>
+      (status === "all" || (status === "published") === Boolean(r.published_at)) &&
+      (course === "all" || r.code === course) &&
+      (!query.trim() || `${r.student_name} ${r.assessment}`.toLowerCase().includes(query.trim().toLowerCase())),
+  );
   useEffect(() => {
     let active = true;
     api("/portal/academic-records")
@@ -184,21 +245,36 @@ export function AcademicRecords({ user }) {
     return () => {
       active = false;
     };
-  }, [user.id]);
+  }, [user.id, reload]);
+  const average = (() => {
+    const scores = (records || [])
+      .filter((r) => r.score !== null && (teacher || r.published_at))
+      .map((r) => Number(r.score));
+    return scores.length
+      ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+      : null;
+  })();
   return (
     <>
       <PageHeading
         eyebrow="ACADEMICS"
-        title={user.role === "teacher" ? "Gradebook" : "Academic record"}
+        title={teacher ? "Gradebook" : "Academic record"}
         description={
-          user.role === "teacher"
-            ? "Assessment records for your teaching courses."
+          teacher
+            ? "Enter grades for students in your courses. Students see a grade only after you publish it."
             : "Published assessment results associated with your account."
         }
       />
+      {teacher && <GradeEditor onSaved={refresh} editing={editing} />}
       <div className="source-note">
         UniBridgeAI assessment records. Official transcript certification is not
         implemented.
+        {average && (
+          <>
+            {" "}
+            Average score: <strong>{average}</strong> / 100.
+          </>
+        )}
       </div>
       {error ? (
         <p role="alert" className="error">
@@ -207,6 +283,36 @@ export function AcademicRecords({ user }) {
       ) : records === null ? (
         <p className="empty">Loading records…</p>
       ) : records.length ? (
+        <>
+        {teacher && (
+          <div className="grade-filters" role="search">
+            <input
+              type="search"
+              aria-label="Search students or assessments"
+              placeholder="Search student or assessment"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select aria-label="Course" value={course} onChange={(e) => setCourse(e.target.value)}>
+              <option value="all">All courses</option>
+              {courses.map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="all">All statuses</option>
+              <option value="published">Published</option>
+              <option value="unpublished">Not published</option>
+            </select>
+            <span className="muted grade-count">
+              {visible.length} of {records.length}
+            </span>
+          </div>
+        )}
+        {!visible.length && <p className="muted">No grades match these filters.</p>}
+        {visible.length > 0 && (
         <div className="panel table-scroll">
           <table>
             <thead>
@@ -215,30 +321,73 @@ export function AcademicRecords({ user }) {
                 {user.role === "teacher" && <th>Student</th>}
                 <th>Assessment</th>
                 <th>Score / 100</th>
+                <th>Feedback</th>
                 <th>Status</th>
+                {teacher && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {records.map((r, i) => (
-                <tr key={i}>
+              {visible.map((r) => (
+                <tr key={`${r.course_id}-${r.student_id}-${r.assessment}`}>
                   <td>
                     <strong>{r.code}</strong>
                     <br />
                     {r.title}
                   </td>
-                  {user.role === "teacher" && <td>{r.student_name}</td>}
+                  {teacher && <td>{r.student_name}</td>}
                   <td>{r.assessment}</td>
                   <td>{r.score ?? "—"}</td>
-                  <td>{r.published_at ? "Published" : "Unpublished"}</td>
+                  <td>{r.feedback || "—"}</td>
+                  <td>
+                    <span className={r.published_at ? "status ok" : "status muted"}>
+                      {r.published_at ? "Published" : "Unpublished"}
+                    </span>
+                  </td>
+                  {teacher && (
+                    <td className="grade-actions">
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() =>
+                          gradeAction(r.published_at ? "unpublish" : "publish", r)
+                        }
+                      >
+                        {r.published_at ? "Unpublish" : "Publish"}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => {
+                          setEditing({ ...r });
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-button danger"
+                        onClick={() => gradeAction("delete", r)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        )}
+        </>
       ) : (
         <EmptyState
           title="No assessment records yet"
-          description="Published assessments will appear here. Grade entry and programme-level GPA calculation are not implemented yet."
+          description={
+            teacher
+              ? "Use “Enter a grade” above to add the first result."
+              : "Your teachers have not published any results yet."
+          }
         />
       )}
     </>

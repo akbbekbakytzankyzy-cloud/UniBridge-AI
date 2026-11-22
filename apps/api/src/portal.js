@@ -29,7 +29,7 @@ export function portalRouter(pool) {
         .status(400)
         .json({ error: "Choose a date range of 1–32 days" });
     const { rows } = await pool.query(
-      `SELECT t.id,t.title,t.starts_at,t.ends_at,t.room,t.session_type,c.code,c.title AS course_title
+      `SELECT t.id,t.title,t.starts_at,t.ends_at,t.room,t.session_type,c.code,c.title AS course_title,(c.teacher_id=$1) AS editable
       FROM timetable_events t JOIN courses c ON c.id=t.course_id
       WHERE t.starts_at >= $2::date AND t.starts_at < $3::date
       AND (c.teacher_id=$1 OR EXISTS(SELECT 1 FROM enrollments e WHERE e.course_id=c.id AND e.student_id=$1)) ORDER BY t.starts_at`,
@@ -39,7 +39,7 @@ export function portalRouter(pool) {
   });
   router.get("/academic-records", async (req, res) => {
     const { rows } = await pool.query(
-      `SELECT c.code,c.title,u.name AS student_name,r.assessment,r.score,r.published_at
+      `SELECT r.course_id,r.student_id,c.code,c.title,u.name AS student_name,r.assessment,r.score,r.feedback,r.published_at
       FROM academic_results r JOIN courses c ON c.id=r.course_id JOIN users u ON u.id=r.student_id
       WHERE ($2='teacher' AND c.teacher_id=$1) OR ($2='student' AND r.student_id=$1 AND r.published_at IS NOT NULL)
       ORDER BY c.code,u.name,r.assessment`,
