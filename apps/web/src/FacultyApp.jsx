@@ -45,6 +45,7 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = t
     [exports, setExports] = useState([]),
     [dirty, setDirty] = useState(false),
     [imported, setImported] = useState({});
+  const [editingPub, setEditingPub] = useState(null);
   // Green marks: profile fields that still hold what an accepted import brought in.
   useEffect(() => {
     if (!profile) return;
@@ -339,41 +340,132 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = t
                   </fieldset>
                 </form>
               </section>
-              {publications.map((p) => (
-                <article
-                  className={"panel" + (IMPORTED_SOURCES.includes(p.source) ? " imported" : "")}
-                  key={p.id}
-                >
-                  <span className="tag">
-                    {p.verification_status} · {p.source}
-                  </span>
-                  <h3>{p.title}</h3>
-                  <p>
-                    {[p.authors, p.venue, p.year, p.doi]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                  <button
-                    className="secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      if (window.confirm("Remove this publication record?"))
+              {publications.map((p) =>
+                editingPub?.id === p.id ? (
+                  <article className="panel" key={p.id}>
+                    <h3>Edit publication</h3>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
                         run(async () => {
+                          const v = editingPub.values;
                           await api(
                             "/faculty/publications/" + p.id,
-                            undefined,
-                            "DELETE",
+                            { ...v, year: v.year ? Number(v.year) : null },
+                            "PUT",
                           );
                           setPublications(
-                            publications.filter((x) => x.id !== p.id),
+                            (await api("/faculty/publications")).publications,
                           );
+                          setEditingPub(null);
+                          setNotice("Publication saved.");
                         });
-                    }}
+                      }}
+                    >
+                      <fieldset disabled={busy}>
+                        <div className="field-grid">
+                          {[
+                            { key: "title", label: "Title", required: true },
+                            { key: "year", label: "Publication year", type: "year" },
+                            { key: "doi", label: "DOI (10.xxxx/...)" },
+                            { key: "venue", label: "Journal or conference" },
+                            { key: "authors", label: "Authors" },
+                          ].map((f) => (
+                            <label key={f.key}>
+                              {f.label}
+                              <input
+                                name={f.key}
+                                required={f.required}
+                                type={f.type ? "number" : "text"}
+                                min={f.type ? 1800 : undefined}
+                                max={f.type ? 2200 : undefined}
+                                value={editingPub.values[f.key] ?? ""}
+                                onChange={(e) =>
+                                  setEditingPub({
+                                    ...editingPub,
+                                    values: { ...editingPub.values, [f.key]: e.target.value },
+                                  })
+                                }
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <button>Save</button>{" "}
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => setEditingPub(null)}
+                        >
+                          Cancel
+                        </button>
+                      </fieldset>
+                    </form>
+                  </article>
+                ) : (
+                  <article
+                    className={"panel" + (IMPORTED_SOURCES.includes(p.source) ? " imported" : "")}
+                    key={p.id}
                   >
-                    Remove publication
-                  </button>
-                </article>
-              ))}
+                    <span className="tag">
+                      {p.verification_status} · {p.source}
+                    </span>
+                    <h3>{p.title}</h3>
+                    <p>
+                      {[p.authors, p.venue, p.year, p.doi]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    {p.doi && (
+                      <p>
+                        <a
+                          href={"https://doi.org/" + p.doi}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open article
+                        </a>
+                      </p>
+                    )}
+                    <button
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        setEditingPub({
+                          id: p.id,
+                          values: {
+                            title: p.title ?? "",
+                            year: p.year ?? "",
+                            doi: p.doi ?? "",
+                            venue: p.venue ?? "",
+                            authors: p.authors ?? "",
+                          },
+                        })
+                      }
+                    >
+                      Edit
+                    </button>{" "}
+                    <button
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm("Remove this publication record?"))
+                          run(async () => {
+                            await api(
+                              "/faculty/publications/" + p.id,
+                              undefined,
+                              "DELETE",
+                            );
+                            setPublications(
+                              publications.filter((x) => x.id !== p.id),
+                            );
+                          });
+                      }}
+                    >
+                      Remove publication
+                    </button>
+                  </article>
+                ),
+              )}
               {!publications.length && (
                 <p className="empty">No publications added yet.</p>
               )}

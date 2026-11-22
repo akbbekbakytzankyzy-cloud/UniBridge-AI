@@ -153,6 +153,17 @@ export function facultyRouter(pool, { fetcher = fetch } = {}) {
     );
     res.status(201).json({ publication: rows[0] });
   });
+  router.put("/publications/:id", async (req, res) => {
+    const id = z.uuid().parse(req.params.id);
+    const v = publicationInput.parse(req.body);
+    const { rows } = await pool.query(
+      "UPDATE publications SET title=$3,year=$4,doi=$5,venue=$6,authors=$7 WHERE id=$1 AND owner_id=$2 RETURNING *",
+      [id, req.user.id, v.title, v.year, v.doi, v.venue, v.authors],
+    );
+    if (!rows.length)
+      return res.status(404).json({ error: "Publication not found" });
+    res.json({ publication: rows[0] });
+  });
   router.post("/publications/import", async (req, res) => {
     z.object({}).strict().parse(req.body ?? {});
     const { rows } = await pool.query(
