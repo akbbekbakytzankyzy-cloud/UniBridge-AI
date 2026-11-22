@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
-function Field({ field, value, onChange }) {
+import AutofillButton from "./AutofillDialog.jsx";
+// Publication sources that came from an import (green in the list); "manual" is not.
+const IMPORTED_SOURCES = ["orcid", "openalex", "doi", "file", "du"];
+
+function Field({ field, value, onChange, imported }) {
   const numeric = ["year", "number"].includes(field.type);
   return (
-    <label>
+    <label className={imported ? "imported-field" : undefined}>
       {field.label}
       {field.required ? " *" : ""}
+      {imported && (
+        <small className="imported-tag">
+          {imported.source === "du" ? "Imported from DU" : "Imported"}
+        </small>
+      )}
       <input
         required={field.required}
         type={numeric ? "number" : field.type === "date" ? "date" : "text"}
@@ -34,7 +43,15 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = t
     [profile, setProfile] = useState(null),
     [publications, setPublications] = useState([]),
     [exports, setExports] = useState([]),
-    [dirty, setDirty] = useState(false);
+    [dirty, setDirty] = useState(false),
+    [imported, setImported] = useState({});
+  // Green marks: profile fields that still hold what an accepted import brought in.
+  useEffect(() => {
+    if (!profile) return;
+    api("/browser-imports/provenance/fields")
+      .then((d) => setImported(d.fields || {}))
+      .catch(() => setImported({}));
+  }, [profile?.revision]);
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -133,10 +150,8 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = t
               <p className="muted">
                 Work email: {user.email}. Fields marked * are required.
               </p>
-              <ProfileSuggestions
+              <AutofillButton
                 profile={profile}
-                busy={busy}
-                run={run}
                 onApplied={(p) => setProfile(p)}
                 setNotice={setNotice}
               />
@@ -164,6 +179,7 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = t
                           key={f.key}
                           field={f}
                           value={profile.details[f.key]}
+                          imported={imported[f.key]}
                           onChange={(v) =>
                             changeProfile("details", {
                               ...profile.details,
@@ -324,7 +340,10 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = t
                 </form>
               </section>
               {publications.map((p) => (
-                <article className="panel" key={p.id}>
+                <article
+                  className={"panel" + (IMPORTED_SOURCES.includes(p.source) ? " imported" : "")}
+                  key={p.id}
+                >
                   <span className="tag">
                     {p.verification_status} · {p.source}
                   </span>
@@ -444,62 +463,3 @@ export default function FacultyWorkspace({ user, tab, onDirtyChange, visible = t
   );
 }
 
-function ProfileSuggestions({ profile, busy, run, onApplied, setNotice }) {
-  const [items, setItems] = useState([]);
-  const [chosen, setChosen] = useState({});
-  const [info, setInfo] = useState("");
-  const suggest = () =>
-    run(async () => {
-      const r = await api("/autofill/profile/suggest", {});
-      setItems(r.suggestions || []);
-      setChosen(Object.fromEntries((r.suggestions || []).map((s) => [s.field, true])));
-      setInfo(
-        (r.suggestions || []).length
-          ? "Suggestions come from your confirmed data only. Tick the ones to fill."
-          : r.note || "No suggestions found in your confirmed data.",
-      );
-    });
-  const apply = () =>
-    run(async () => {
-      const values = Object.fromEntries(
-        items.filter((s) => chosen[s.field]).map((s) => [s.field, s.value]),
-      );
-      if (!Object.keys(values).length) return;
-      const r = await api(
-        "/autofill/profile/apply",
-        { revision: profile.revision, values },
-      );
-      onApplied({ ...profile, revision: r.revision, ...Object.fromEntries(Object.entries(values)) });
-      setItems([]);
-      setNotice(`Filled ${r.applied.length} field(s) from your confirmed data. Review and save the profile.`);
-    });
-  return (
-    <section className="panel">
-      <h2>Fill empty fields from my data</h2>
-      <p className="muted">
-        A local AI model suggests values for empty fields using only what you confirmed
-        (ORCID, OpenAlex, confirmed publications and records). Filled fields are never changed.
-      </p>
-      <button type="button" disabled={busy} onClick={suggest}>
-        Suggest values
-      </button>
-      {info && <p role="status">{info}</p>}
-      {items.map((s) => (
-        <label key={s.field} className="inline-check">
-          <input
-            type="checkbox"
-            checked={!!chosen[s.field]}
-            disabled={busy}
-            onChange={(e) => setChosen((c) => ({ ...c, [s.field]: e.target.checked }))}
-          />{" "}
-          <strong>{s.field}</strong>: {s.value} <small>(source {s.source}: {s.reason})</small>
-        </label>
-      ))}
-      {items.length > 0 && (
-        <button type="button" disabled={busy} onClick={apply}>
-          Fill selected fields
-        </button>
-      )}
-    </section>
-  );
-}

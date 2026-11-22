@@ -273,7 +273,7 @@ function Login({ onLogin }) {
     </main>
   );
 }
-function Dashboard({ user, summary, navigate }) {
+function Dashboard({ user, summary, navigate, onAssistant }) {
   const teacher = user.role === "teacher";
   const stats = [
     {
@@ -462,8 +462,8 @@ function Dashboard({ user, summary, navigate }) {
               Ask questions, draft text and discuss material you paste into the
               chat.
             </p>
-            <button onClick={() => navigate("AI workspace")}>
-              Explore AI workspace <Icon name="arrow" size={16} />
+            <button onClick={onAssistant}>
+              Open the AI assistant <Icon name="arrow" size={16} />
             </button>
             <small>Chat with the configured AI model.</small>
           </section>
@@ -574,6 +574,12 @@ function PlannedAcademicPage({ page }) {
   );
 }
 export default function PortalApp() {
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && setAssistantOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [user, setUser] = useState(null),
     [loading, setLoading] = useState(true),
     [page, setPage] = useState(() =>
@@ -645,7 +651,6 @@ export default function PortalApp() {
       title: "WORKSPACE",
       items: [
         ["Dashboard", "dashboard"],
-        ["AI workspace", "ai"],
       ],
     },
     {
@@ -724,7 +729,7 @@ export default function PortalApp() {
       </>
     );
   return (
-    <div className="shell">
+    <div className={"shell" + (assistantOpen ? " assistant-open" : "")}>
       <aside className={"sidebar " + (menu ? "is-open" : "")}>
         <Brand />
         <div className="institution">
@@ -763,9 +768,6 @@ export default function PortalApp() {
                 >
                   <Icon name={icon} size={18} />
                   <span>{pageLabel(name)}</span>
-                  {name === "AI workspace" && (
-                    <span className="nav-badge">AI</span>
-                  )}
                 </button>
               ))}
               </div>
@@ -875,7 +877,12 @@ export default function PortalApp() {
             </p>
           )}
           {page === "Dashboard" && (
-            <Dashboard user={user} summary={summary} navigate={navigate} />
+            <Dashboard
+              user={user}
+              summary={summary}
+              navigate={navigate}
+              onAssistant={() => setAssistantOpen(true)}
+            />
           )}
           {page === "My courses" && (
             <Courses user={user} onCount={onCourseCount} />
@@ -883,7 +890,6 @@ export default function PortalApp() {
           {page === "Timetable" && <Timetable user={user} />}
           {page === "Academic records" && <AcademicRecords user={user} />}
           {page === "Services & requests" && <ServiceRequests />}
-          {page === "AI workspace" && <AIWorkspace teacher={teacher} />}
           {page === "University links" && <UniversityLinks />}
           {page === "University accounts" && <UniversityAccounts />}
           {[
@@ -912,6 +918,28 @@ export default function PortalApp() {
           </footer>
         </main>
       </div>
+      <button
+        type="button"
+        className="assistant-fab"
+        aria-expanded={assistantOpen}
+        aria-controls="assistant-panel"
+        onClick={() => setAssistantOpen((open) => !open)}
+      >
+        <Icon name="ai" size={20} />
+        <span>{assistantOpen ? "Hide assistant" : "Assistant"}</span>
+      </button>
+      <aside
+        id="assistant-panel"
+        className="assistant-drawer"
+        aria-label="AI assistant"
+        hidden={!assistantOpen}
+      >
+        <AIWorkspace
+          teacher={teacher}
+          page={page}
+          onClose={() => setAssistantOpen(false)}
+        />
+      </aside>
     </div>
   );
 }
