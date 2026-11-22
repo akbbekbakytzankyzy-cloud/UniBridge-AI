@@ -282,14 +282,14 @@ export function ImportAllPanel({ onDone }) {
         </article>
         <article className="import-card">
           <strong>AITU LMS</strong>
-          <p>Opens LMS in the UniBridgeAI window. Whole-course capture is not built yet; import page by page.</p>
+          <p>Opens LMS in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.</p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://lms.astanait.edu.kz/")}>
             Импорт всей информации
           </button>
         </article>
         <article className="import-card">
           <strong>MyDU</strong>
-          <p>Opens MyDU in the UniBridgeAI window. Whole-page capture is not built yet; import page by page.</p>
+          <p>Opens MyDU in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.</p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://my-du.astanait.edu.kz/")}>
             Импорт всей информации
           </button>
