@@ -13,11 +13,11 @@
     host.style.cssText = "all:initial;position:fixed;z-index:2147483647;right:18px;bottom:18px";
     const shadow = host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    style.textContent = `*{box-sizing:border-box;font:14px system-ui;color:#102446}button{border:0;border-radius:8px;padding:11px 16px;background:#2459e8;color:white;font-weight:650;cursor:pointer;box-shadow:0 4px 20px #0003}button:disabled{opacity:.55}dialog{position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);border:0;border-radius:14px;padding:20px;width:min(650px,calc(100vw - 36px));max-height:85vh;box-shadow:0 18px 70px #0007}dialog::backdrop{background:#14233b99}h2{margin:0 0 8px}p{line-height:1.45}textarea{width:100%;height:42vh;resize:vertical;padding:10px;border:1px solid #aab6c8;border-radius:8px}footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.secondary{background:#e9eef8;color:#102446;box-shadow:none}`;
+    style.textContent = `*{box-sizing:border-box;font:14px system-ui;color:#102446}button{border:0;border-radius:8px;padding:11px 16px;background:#2459e8;color:white;font-weight:650;cursor:pointer;box-shadow:0 4px 20px #0003}button:disabled{opacity:.55}dialog{position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%);border:0;border-radius:14px;padding:20px;width:min(650px,calc(100vw - 36px));max-height:85vh;box-shadow:0 18px 70px #0007}dialog::backdrop{background:#14233b99}h2{margin:0 0 8px}p{line-height:1.45}textarea{width:100%;height:42vh;resize:vertical;padding:10px;border:1px solid #aab6c8;border-radius:8px}footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.secondary{background:#e9eef8;color:#102446;box-shadow:none}.summary{background:#f3f6fc;border-radius:10px;padding:6px 14px;margin:10px 0;max-height:40vh;overflow:auto}.summary[hidden]{display:none}.row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #dfe6f2}.row:last-child{border-bottom:0}.row strong{color:#2459e8}details{margin-top:10px}summary{cursor:pointer;color:#2459e8;font-weight:600}`;
     const button = document.createElement("button");
     button.textContent = "Import this page to UniBridgeAI";
     const dialog = document.createElement("dialog");
-    dialog.innerHTML = `<h2>Review page data</h2><p>Check and edit this text. It will be saved to your UniBridgeAI account only after you choose Send.</p><textarea maxlength="300000" aria-label="Text to import"></textarea><footer><button class="secondary" data-action="cancel">Cancel</button><button data-action="send">Send for review</button></footer><p role="status"></p>`;
+    dialog.innerHTML = `<h2>Review page data</h2><p class="intro">Check the data below. It will be saved to your UniBridgeAI account only after you choose Send.</p><div class="summary" hidden></div><details><summary>Show raw data</summary><textarea maxlength="300000" aria-label="Text to import"></textarea></details><footer><button class="secondary" data-action="cancel">Cancel</button><button data-action="send">Send for review</button></footer><p role="status"></p>`;
     const area = dialog.querySelector("textarea");
     const status = dialog.querySelector("[role=status]");
     // On a DU teacher profile the whole profile (all tabs and pages) is collected.
@@ -31,6 +31,20 @@
           area.value = JSON.stringify(data);
           const counts = Object.entries(data.sections).map(([k, v]) => k + ": " + v.rows.length).join(", ");
           area.readOnly = true;
+          // Show a readable summary; the raw JSON stays one click away.
+          const summary = dialog.querySelector(".summary");
+          summary.replaceChildren(...Object.entries(data.sections).map(([name, section]) => {
+            const row = document.createElement("div");
+            row.className = "row";
+            const label = document.createElement("span");
+            label.textContent = name;
+            const count = document.createElement("strong");
+            count.textContent = section.rows.length + " rows";
+            row.append(label, count);
+            return row;
+          }));
+          summary.hidden = false;
+          dialog.querySelector("details").open = false;
           status.textContent = "Collected the whole DU profile (" + counts + "). UniBridgeAI will show every item for review before saving.";
         } catch (error) {
           area.readOnly = false;
@@ -44,6 +58,8 @@
         return;
       }
       area.readOnly = false;
+      dialog.querySelector(".summary").hidden = true;
+      dialog.querySelector("details").open = true;
       const clone = document.body.cloneNode(true);
       clone.querySelector("#unibridge-import-host")?.remove();
       for (const node of clone.querySelectorAll("script,style,noscript,svg,canvas,iframe,input,textarea,select,button,[hidden],[aria-hidden=true]")) node.remove();
