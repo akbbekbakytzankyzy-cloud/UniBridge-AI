@@ -43,6 +43,9 @@ export async function createApp(
   } = {},
 ) {
   const app = express();
+  // In production, Nginx is the only proxy and connects over loopback.
+  // Trusting only that hop lets per-IP rate limits use the real client IP.
+  if (production) app.set("trust proxy", "loopback");
   const changeListeners = new Map();
   const onedriveCfg = onedriveConfig(process.env, {
     redirectUri: `${origin}/api/onedrive-callback`,
