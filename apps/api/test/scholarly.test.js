@@ -98,7 +98,22 @@ test("publication import and record-grounded chat", async (t) => {
   const ollama = async (url, options) => {
     if (url.pathname === "/api/tags")
       return Response.json({ models: [{ name: "qwen3:1.7b" }] });
-    chats.push(JSON.parse(options.body));
+    const body = JSON.parse(options.body);
+    chats.push(body);
+    if (body.format) {
+      const calls = chats.filter((entry) => entry.format).length;
+      return Response.json({
+        done: true,
+        message: {
+          content: JSON.stringify(
+            calls === 1
+              ? { tool: "summarize_my_publications", args: {}, answer: null }
+              : { tool: null, args: {}, answer: "You have 4 publications." },
+          ),
+        },
+        done_reason: "stop",
+      });
+    }
     return Response.json({
       done: true,
       message: { content: "Answer [P1]" },
@@ -190,16 +205,15 @@ test("publication import and record-grounded chat", async (t) => {
     });
   assert.equal((await ask(student, "my_records")).status, 403);
   const reply = await (await ask(teacher, "my_records")).json();
-  assert.deepEqual(reply.grounding, { publications: 4, included: 4 });
-  const sent = chats.at(-1);
-  const context = sent.messages[0].content;
-  assert.match(context, /publications: 4 \(with DOI: 1; confirmed: 1\)/);
-  assert.match(context, /2024: 1/);
-  assert.match(context, /Synthetic study of matching/);
-  assert.match(context, /\[AWARDS1\] title: Synthetic award/);
-  assert.doesNotMatch(context, /\+7 700|hire_date|employment_fraction/);
-  assert.equal(sent.options.temperature, 0);
-  assert.equal(sent.options.num_ctx, 8192);
+  assert.equal(reply.message.content, "You have 4 publications.");
+  assert.deepEqual(reply.toolsUsed, ["summarize_my_publications"]);
+  const toolPrompts = chats.filter((entry) => entry.format);
+  assert.equal(toolPrompts.length, 2);
+  assert.ok(toolPrompts.every((entry) => entry.options.num_ctx === 4096));
+  assert.ok(toolPrompts.every((entry) => entry.options.num_predict === 350));
+  assert.match(toolPrompts[1].messages[1].content, /\"total\":4/);
+  assert.match(toolPrompts[1].messages[1].content, /\"2024\":1/);
+  assert.doesNotMatch(JSON.stringify(toolPrompts), /\+7 700|hire_date|employment_fraction|Synthetic study of matching/);
   const plain = await (await ask(teacher, "none")).json();
   assert.equal(plain.grounding, null);
   assert.doesNotMatch(chats.at(-1).messages[0].content, /RECORDS/);

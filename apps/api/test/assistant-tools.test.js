@@ -5,6 +5,7 @@ import { vector } from "@electric-sql/pglite-pgvector";
 import { createApp } from "../src/app.js";
 import { applyMigrations } from "../src/migrations.js";
 import { hashPassword } from "../src/security.js";
+import { toolRunner } from "../src/assistant-tools.js";
 
 test("the assistant answers from its own records through read-only tools", async (t) => {
   const db = new PGlite({ extensions: { vector } });
@@ -13,8 +14,17 @@ test("the assistant answers from its own records through read-only tools", async
   for (const e of ["mine@test.edu", "other@test.edu"])
     await db.query("INSERT INTO users(email,name,role,password_hash) VALUES($1,$1,'teacher',$2)", [e, await hashPassword("Test-password-123")]);
   const ids = Object.fromEntries((await db.query("SELECT email,id FROM users")).rows.map((r) => [r.email, r.id]));
-  await db.query("INSERT INTO publications(owner_id,title,year,verification_status) VALUES($1,'Smart Campus Energy Optimization',2025,'confirmed')", [ids["mine@test.edu"]]);
+  await db.query("INSERT INTO publications(owner_id,title,year,verification_status) VALUES($1,'Smart Campus Energy Optimization',2025,'unverified')", [ids["mine@test.edu"]]);
   await db.query("INSERT INTO publications(owner_id,title,year,verification_status) VALUES($1,'Secret Other Persons Paper',2024,'confirmed')", [ids["other@test.edu"]]);
+  const tools = toolRunner(db, ids["mine@test.edu"]);
+  assert.deepEqual(JSON.parse(await tools.run("summarize_my_publications")), {
+    total: 1,
+    byYear: { 2025: 1 },
+    byStatus: { unverified: 1 },
+  });
+  const pending = JSON.parse(await tools.run("list_pending_items"));
+  assert.equal(pending.unverifiedPublications, 1);
+  assert.equal(pending.unverifiedPublicationSamples[0].title, "Smart Campus Energy Optimization");
 
   const seen = [];
   const writes = [];
@@ -51,6 +61,11 @@ test("the assistant answers from its own records through read-only tools", async
   // Nothing was written by the assistant.
   assert.equal((await db.query("SELECT count(*)::int AS n FROM publications")).rows[0].n, 2);
   assert.equal(writes.length, 0);
+  // Older clients send my_records for local mode. Keep that route on bounded,
+  // read-only tools instead of embedding the entire profile in the prompt.
+  const focused = await fetch(base + "/ai/chat", { method: "POST", headers: { "Content-Type": "application/json", Cookie: cookie, Origin: "http://localhost:5173" }, body: JSON.stringify({ model: "qwen3:4b", grounding: "my_records", messages: [{ role: "user", content: "what articles do I have about energy?" }] }) });
+  assert.equal(focused.status, 200);
+  assert.deepEqual((await focused.json()).toolsUsed, ["search_my_records"]);
   // The default chat (grounding none) does not call tools.
   const plain = await fetch(base + "/ai/chat", { method: "POST", headers: { "Content-Type": "application/json", Cookie: cookie, Origin: "http://localhost:5173" }, body: JSON.stringify({ model: "qwen3:4b", grounding: "none", messages: [{ role: "user", content: "Hi" }] }) });
   assert.equal(plain.status, 200);

@@ -233,7 +233,17 @@ export function aiRouter({
           });
         cloud = chosen.provider === "cloud";
         // Local chat uses the read-only tools; cloud chat keeps the direct path.
-        if (!cloud && v.grounding === "tools" && pool && req.user && aiClient) {
+        if (
+          !cloud &&
+          ["tools", "my_records"].includes(v.grounding) &&
+          pool &&
+          req.user &&
+          aiClient
+        ) {
+          if (v.grounding === "my_records" && req.user.role !== "teacher")
+            return res.status(403).json({
+              error: "Answers from records are available to teacher accounts.",
+            });
           const question = v.messages.at(-1).content;
           const history = v.messages.slice(0, -1);
           try {

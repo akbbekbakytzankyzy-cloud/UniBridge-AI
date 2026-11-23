@@ -708,14 +708,14 @@ export function AIWorkspace({ teacher = false, page = "", onClose }) {
       const data = await api("/ai/chat", {
         model: activeModel,
         messages: context,
-        // Local chat uses the read-only tools unless it answers from records.
+        // Local chat queries only the specific records needed for this question.
         grounding: cloud
           ? grounded
             ? "my_records"
             : "none"
           : grounded
-            ? "my_records"
-            : "tools",
+            ? "tools"
+            : "none",
         cloudConsent,
         context: page || undefined,
       });
@@ -752,7 +752,14 @@ export function AIWorkspace({ teacher = false, page = "", onClose }) {
               aria-pressed={cloud}
               disabled={locked || !connection?.cloud?.available}
               title={connection?.cloud?.available ? "Claude in the cloud" : connection?.cloud?.error}
-              onClick={() => setMode("cloud")}
+              onClick={() => {
+                setMode("cloud");
+                // Cloud starts without private profile data. If the user opts
+                // in to using it, expose the consent control immediately.
+                setGrounded(false);
+                setCloudConsent(false);
+                if (teacher) setSettingsOpen(true);
+              }}
             >
               Cloud
             </button>

@@ -30,7 +30,15 @@ export function createAIClient({
   }
 
   // Returns the parsed JSON object the model produced for `schema`.
-  async function json({ provider, model, system, user, schema, maxTokens = 2048 }) {
+  async function json({
+    provider,
+    model,
+    system,
+    user,
+    schema,
+    maxTokens = 2048,
+    contextTokens = 8192,
+  }) {
     const messages = [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -70,7 +78,13 @@ export function createAIClient({
           think: false,
           messages,
           format: schema,
-          options: { temperature: 0, seed: 42, num_ctx: 8192, num_gpu: 0 },
+          options: {
+            temperature: 0,
+            seed: 42,
+            num_ctx: contextTokens,
+            num_predict: maxTokens,
+            num_gpu: 0,
+          },
           keep_alive: "5m",
         }),
       });

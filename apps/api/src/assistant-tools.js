@@ -1,7 +1,7 @@
 // Read-only tools the assistant may call. Every tool runs as the signed-in user
 // and returns bounded text. Tools never write, never reach other users' data and
 // never send anything to a third party.
-const MAX_RESULT = 6000;
+const MAX_RESULT = 2500;
 const clip = (s) => (s.length > MAX_RESULT ? s.slice(0, MAX_RESULT) + " …[truncated]" : s);
 
 export const TOOL_SPECS = [
@@ -9,6 +9,11 @@ export const TOOL_SPECS = [
     name: "search_my_records",
     description: "Search the user's own publications, accepted imports and confirmed draft records by keyword. Use for questions like 'what articles do I have'.",
     parameters: { type: "object", properties: { query: { type: "string", maxLength: 200 } }, required: ["query"] },
+  },
+  {
+    name: "summarize_my_publications",
+    description: "Count the user's publications by year and verification status. Use for questions about total publications or years.",
+    parameters: { type: "object", properties: {} },
   },
   {
     name: "get_my_profile",
@@ -49,6 +54,24 @@ export function toolRunner(pool, userId) {
         ]);
         return clip(JSON.stringify({ publications: pubs, drafts, imports }));
       }
+      if (name === "summarize_my_publications") {
+        const { rows } = await pool.query(
+          "SELECT year,verification_status,count(*)::int AS count FROM publications WHERE owner_id=$1 GROUP BY year,verification_status ORDER BY year DESC NULLS LAST",
+          [userId],
+        );
+        const byYear = {};
+        const byStatus = {};
+        let total = 0;
+        for (const row of rows) {
+          const count = Number(row.count);
+          const year = row.year ?? "no year";
+          byYear[year] = (byYear[year] || 0) + count;
+          byStatus[row.verification_status] =
+            (byStatus[row.verification_status] || 0) + count;
+          total += count;
+        }
+        return JSON.stringify({ total, byYear, byStatus });
+      }
       if (name === "get_my_profile") {
         const { rows } = await pool.query("SELECT details FROM faculty_profiles WHERE user_id=$1", [userId]);
         const d = rows[0]?.details || {};
@@ -56,15 +79,16 @@ export function toolRunner(pool, userId) {
         return clip(JSON.stringify(Object.fromEntries(allowed.filter((k) => d[k]).map((k) => [k, d[k]]))));
       }
       if (name === "list_pending_items") {
-        const [{ rows: imp }, { rows: dr }, { rows: unv }, { rows: prof }] = await Promise.all([
+        const [{ rows: imp }, { rows: dr }, { rows: unv }, { rows: unvItems }, { rows: prof }] = await Promise.all([
           pool.query("SELECT count(*)::int AS n FROM browser_imports WHERE user_id=$1 AND status='pending'", [userId]),
           pool.query("SELECT count(*)::int AS n FROM extraction_drafts WHERE user_id=$1 AND status='draft'", [userId]),
           pool.query("SELECT count(*)::int AS n FROM publications WHERE owner_id=$1 AND verification_status='unverified'", [userId]),
+          pool.query("SELECT title,year,doi FROM publications WHERE owner_id=$1 AND verification_status='unverified' ORDER BY year DESC NULLS LAST,created_at DESC LIMIT 20", [userId]),
           pool.query("SELECT details FROM faculty_profiles WHERE user_id=$1", [userId]),
         ]);
         const d = prof[0]?.details || {};
         const empty = ["department", "position", "degree", "orcid"].filter((k) => !d[k]);
-        return JSON.stringify({ pendingImports: imp[0].n, draftsToConfirm: dr[0].n, unverifiedPublications: unv[0].n, emptyProfileFields: empty });
+        return JSON.stringify({ pendingImports: imp[0].n, draftsToConfirm: dr[0].n, unverifiedPublications: unv[0].n, unverifiedPublicationSamples: unvItems, emptyProfileFields: empty });
       }
       if (name === "app_help") {
         const key = String(args.topic || "").toLowerCase();
@@ -107,7 +131,15 @@ export async function runAssistantWithTools({ ai, model, pool, userId, question,
       transcript.length && `TOOL RESULTS SO FAR:\n${transcript.map((t) => `${t.tool} -> ${t.result}`).join("\n")}`,
       "Reply with JSON: to call a tool set tool and args and answer to null; to answer set answer and tool to null.",
     ].filter(Boolean).join("\n\n");
-    const out = await ai.json({ provider: "local", model, system: TOOLS_SYSTEM, user, schema: answerSchema, maxTokens: 800 });
+    const out = await ai.json({
+      provider: "local",
+      model,
+      system: TOOLS_SYSTEM,
+      user,
+      schema: answerSchema,
+      maxTokens: 350,
+      contextTokens: 4096,
+    });
     if (out.answer) return { answer: out.answer, tools: transcript.map((t) => t.tool) };
     if (!out.tool) throw new Error("The assistant returned neither an answer nor a tool call");
     const result = await runner.run(out.tool, out.args || {});
