@@ -109,7 +109,7 @@ try {
   app = await createApp(db, {
     origin,
     staticDir,
-    allowRegistration: process.env.UB_ALLOW_REGISTRATION !== "0",
+    allowRegistration: process.env.UB_ALLOW_REGISTRATION === "1",
     onedrive: { secretKey },
   });
   // Automatic OneDrive sync for connected teachers (default every 15 minutes).

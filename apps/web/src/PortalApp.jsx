@@ -729,9 +729,6 @@ export default function PortalApp() {
         ["My courses", "courses"],
         ["Timetable", "calendar"],
         ["Academic records", "records"],
-        ["Study plan", "records"],
-        ["Registration", "courses"],
-        ["Thesis & advising", "research"],
       ],
     },
     {
@@ -751,7 +748,6 @@ export default function PortalApp() {
       title: "CAMPUS",
       items: [
         ["Services & requests", "services"],
-        ["Library", "courses"],
         ["University links", "link"],
       ],
     },
@@ -850,7 +846,7 @@ export default function PortalApp() {
           <div className="avatar">{user.name.slice(0, 1)}</div>
           <div className="account-name">
             <strong>{user.name}</strong>
-            <small>{teacher ? "Faculty account" : "Student account"}</small>
+            <small>Faculty account</small>
             {"__TAURI_INTERNALS__" in window && (
               <button
                 type="button"

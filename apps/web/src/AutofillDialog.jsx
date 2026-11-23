@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 
-// "Автозаполнение с помощью ИИ": the owner picks the sources, then the model
+// "Auto-fill with AI": the owner picks the sources, then the model
 // (cloud models first, then local), reviews the suggestions and ticks what to fill.
 // Nothing is saved until "Fill selected fields".
 export default function AutofillButton({ profile, onApplied, setNotice }) {
@@ -9,7 +9,7 @@ export default function AutofillButton({ profile, onApplied, setNotice }) {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}>
-        Автозаполнение с помощью ИИ
+        Auto-fill with AI
       </button>
       {open && (
         <AutofillDialog
@@ -128,7 +128,7 @@ function AutofillDialog({ profile, onClose, onApplied }) {
         onClick={(e) => e.stopPropagation()}
       >
         <header className="modal-head">
-          <h2 id="autofill-title">Автозаполнение с помощью ИИ</h2>
+          <h2 id="autofill-title">Auto-fill with AI</h2>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
             ×
           </button>

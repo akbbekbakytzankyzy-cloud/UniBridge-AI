@@ -224,7 +224,7 @@ function ImportDescription({ row, onSaved }) {
   );
 }
 
-// "Импорт всей информации": one button per linked platform.
+// "Import all information": one button per linked platform.
 export function ImportAllPanel({ onDone }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -270,28 +270,28 @@ export function ImportAllPanel({ onDone }) {
             “Import full DU profile to UniBridgeAI”.
           </p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://du.astanait.edu.kz/")}>
-            Импорт всей информации
+            Import all information
           </button>
         </article>
         <article className="import-card">
           <strong>OneDrive</strong>
           <p>Reads every file in the folder you chose. Unchanged files are not read again.</p>
           <button type="button" disabled={busy} onClick={syncOneDrive}>
-            Импорт всей информации
+            Import all information
           </button>
         </article>
         <article className="import-card">
           <strong>AITU LMS</strong>
           <p>Opens LMS in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.</p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://lms.astanait.edu.kz/")}>
-            Импорт всей информации
+            Import all information
           </button>
         </article>
         <article className="import-card">
           <strong>MyDU</strong>
           <p>Opens MyDU in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.</p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://my-du.astanait.edu.kz/")}>
-            Импорт всей информации
+            Import all information
           </button>
         </article>
       </div>
