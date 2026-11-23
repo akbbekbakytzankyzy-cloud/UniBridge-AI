@@ -5,6 +5,7 @@ import FacultyWorkspace from "./FacultyApp.jsx";
 import { TeacherToday } from "./TeachingTools.jsx";
 import Courses from "./Courses.jsx";
 import UniversityAccounts from "./UniversityAccounts.jsx";
+import { LanguageSelect, useI18n } from "./i18n.jsx";
 import {
   AcademicRecords,
   AIWorkspace,
@@ -53,16 +54,17 @@ function Brand() {
   );
 }
 function PasswordField({ label, name, autoComplete, placeholder, minLength }) {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   return (
     <label>
-      {label}
+      {t(label)}
       <span className="password-field">
         <input
           name={name}
           type={visible ? "text" : "password"}
           autoComplete={autoComplete}
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
           minLength={minLength}
           maxLength={128}
           required
@@ -70,9 +72,9 @@ function PasswordField({ label, name, autoComplete, placeholder, minLength }) {
         <button
           type="button"
           className="password-toggle"
-          aria-label={visible ? "Hide password" : "Show password"}
+          aria-label={t(visible ? "Hide password" : "Show password")}
           aria-pressed={visible}
-          title={visible ? "Hide password" : "Show password"}
+          title={t(visible ? "Hide password" : "Show password")}
           onClick={() => setVisible((v) => !v)}
         >
           <Icon name={visible ? "eyeOff" : "eye"} size={18} />
@@ -82,6 +84,7 @@ function PasswordField({ label, name, autoComplete, placeholder, minLength }) {
   );
 }
 function Login({ onLogin }) {
+  const { t } = useI18n();
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [mode, setMode] = useState("signin"),
@@ -99,7 +102,7 @@ function Login({ onLogin }) {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(e.currentTarget));
     if (mode === "register" && v.password !== v.confirm)
-      return setError("Passwords do not match.");
+      return setError(t("Passwords do not match."));
     setBusy(true);
     setError("");
     try {
@@ -167,41 +170,40 @@ function Login({ onLogin }) {
       <section className="intro">
         <Brand />
         <div className="login-story">
-          <h1>Your university, in one place.</h1>
-          <p>Courses, records, research and campus services.</p>
+          <h1>{t("Your university, in one place.")}</h1>
+          <p>{t("Courses, records, research and campus services.")}</p>
         </div>
         <div className="login-bottom">Astana IT University · prototype</div>
       </section>
       <section className="signin">
-        <p className="eyebrow">WELCOME TO UNIBRIDGEAI</p>
+        <LanguageSelect />
+        <p className="eyebrow">{t("WELCOME TO UNIBRIDGEAI")}</p>
         <h2>
           {mode === "register"
-            ? "Create your account"
+            ? t("Create your account")
             : mode === "forgot"
-              ? "Forgot your password?"
-              : "Sign in to your campus"}
+              ? t("Forgot your password?")
+              : t("Sign in to your campus")}
         </h2>
         <p>
           {mode === "register"
-            ? "Student accounts can be created here. Teacher accounts are issued by an administrator."
+            ? t("Student accounts can be created here. Teacher accounts are issued by an administrator.")
             : mode === "forgot"
-              ? "UniBridgeAI does not send password-reset emails yet."
-              : "Access your personal academic workspace."}
+              ? t("UniBridgeAI does not send password-reset emails yet.")
+              : t("Access your personal academic workspace.")}
         </p>
         {mode === "forgot" ? (
           <div className="forgot-help">
             <p>
-              Ask the administrator of your UniBridgeAI installation to reset
-              your password.
+              {t("Ask the administrator of your UniBridgeAI installation to reset your password.")}
             </p>
             <p>
-              On your own computer (local version): stop the app, run{" "}
+              {t("On your own computer (local version): stop the app, run")}{" "}
               <code>npm run local:reset-password</code> in the project folder,
-              then start the app again. The new password is shown in the window
-              and saved in <code>data/local-access.txt</code>.
+              {t("then start the app again. The new password is shown in the window and saved in")}{" "}<code>data/local-access.txt</code>.
             </p>
             <button type="button" onClick={() => switchTo("signin")}>
-              Back to sign in
+              {t("Back to sign in")}
               <Icon name="arrow" size={18} />
             </button>
           </div>
@@ -209,11 +211,11 @@ function Login({ onLogin }) {
           <form key={mode} onSubmit={submit}>
             {mode === "register" && (
               <label>
-                Full name
+                {t("Full name")}
                 <input
                   name="name"
                   autoComplete="name"
-                  placeholder="Your name"
+                  placeholder={t("Your name")}
                   minLength={2}
                   maxLength={120}
                   required
@@ -221,33 +223,31 @@ function Login({ onLogin }) {
               </label>
             )}
             <label>
-              Email address
+              {t("Email address")}
               <input
                 name="email"
                 type="email"
                 autoComplete="username"
-                placeholder="Your UniBridgeAI account email"
+                placeholder={t("Your UniBridgeAI account email")}
                 maxLength={254}
                 required
               />
             </label>
             <PasswordField
-              label="Password"
+              label={t("Password")}
               name="password"
               autoComplete={
                 mode === "register" ? "new-password" : "current-password"
               }
-              placeholder={
-                mode === "register" ? "At least 12 characters" : "Enter your password"
-              }
+              placeholder={mode === "register" ? t("At least 12 characters") : t("Enter your password")}
               minLength={mode === "register" ? 12 : undefined}
             />
             {mode === "register" && (
               <PasswordField
-                label="Repeat password"
+                label={t("Repeat password")}
                 name="confirm"
                 autoComplete="new-password"
-                placeholder="Repeat the password"
+                placeholder={t("Repeat the password")}
                 minLength={12}
               />
             )}
@@ -257,17 +257,17 @@ function Login({ onLogin }) {
                 className="link-button forgot-link"
                 onClick={() => switchTo("forgot")}
               >
-                Forgot password?
+                {t("Forgot password?")}
               </button>
             )}
             <button disabled={busy}>
               {busy
                 ? mode === "register"
-                  ? "Creating account…"
-                  : "Signing in…"
+                  ? t("Creating account…")
+                  : t("Signing in…")
                 : mode === "register"
-                  ? "Create account"
-                  : "Sign in"}
+                  ? t("Create account")
+                  : t("Sign in")}
               <Icon name="arrow" size={18} />
             </button>
           </form>
@@ -279,18 +279,18 @@ function Login({ onLogin }) {
         )}
         {mode !== "forgot" && registration && (
           <p className="switch-mode">
-            {mode === "register" ? "Already have an account?" : "New to UniBridgeAI?"}{" "}
+            {mode === "register" ? t("Already have an account?") : t("New to UniBridgeAI?")}{" "}
             <button
               type="button"
               className="link-button"
               onClick={() => switchTo(mode === "register" ? "signin" : "register")}
             >
-              {mode === "register" ? "Sign in" : "Create an account"}
+              {mode === "register" ? t("Sign in") : t("Create an account")}
             </button>
           </p>
         )}
         <p className="signin-note">
-          One UniBridgeAI account works on the website and in the desktop app.
+          {t("One UniBridgeAI account works on the website and in the desktop app.")}
         </p>
         <div className="login-links">
           <a
@@ -613,6 +613,7 @@ function PlannedAcademicPage({ page }) {
   );
 }
 export default function PortalApp() {
+  const { t } = useI18n();
   const [assistantOpen, setAssistantOpen] = useState(false);
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && setAssistantOpen(false);
@@ -630,6 +631,13 @@ export default function PortalApp() {
     [error, setError] = useState(""),
     [search, setSearch] = useState(""),
     [menu, setMenu] = useState(false),
+    [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+      try {
+        return localStorage.getItem("ub-sidebar-collapsed") === "true";
+      } catch {
+        return false;
+      }
+    }),
     [collapsed, setCollapsed] = useState(() => {
       try {
         return JSON.parse(localStorage.getItem("ub-nav-collapsed") || "{}");
@@ -767,7 +775,7 @@ export default function PortalApp() {
   const matches = groups
     .flatMap((g) => g.items)
     .filter(([name]) =>
-      pageLabel(name).toLowerCase().includes(search.toLowerCase()),
+      t(pageLabel(name)).toLowerCase().includes(search.toLowerCase()),
     );
   if (loading)
     return (
@@ -796,8 +804,8 @@ export default function PortalApp() {
       </>
     );
   return (
-    <div className={"shell" + (assistantOpen ? " assistant-open" : "")}>
-      <aside className={"sidebar " + (menu ? "is-open" : "")}>
+    <div className={"shell" + (assistantOpen ? " assistant-open" : "") + (sidebarCollapsed ? " sidebar-collapsed" : "")}>
+      <aside className={"sidebar " + (menu ? "is-open" : "") + (sidebarCollapsed ? " is-collapsed" : "")}>
         <Brand />
         <div className="institution">
           <span className="institution-mark">A</span>
@@ -806,9 +814,9 @@ export default function PortalApp() {
             <small>UniBridgeAI prototype</small>
           </div>
         </div>
-        <nav aria-label="Main navigation">
+        <nav aria-label={t("Main navigation")}>
           {groups.map((g) => {
-            const open = search ? true : !collapsed[g.title];
+            const open = sidebarCollapsed || search ? true : !collapsed[g.title];
             const holdsPage = g.items.some(([name]) => name === page);
             return (
             <div
@@ -822,7 +830,7 @@ export default function PortalApp() {
                 aria-controls={"nav-" + g.title}
                 onClick={() => setCollapsed(toggleGroup(g.title))}
               >
-                <span>{g.title}</span>
+                <span>{t(g.title)}</span>
                 <Icon name="chevron" size={14} />
               </button>
               <div id={"nav-" + g.title} hidden={!open}>
@@ -831,10 +839,11 @@ export default function PortalApp() {
                   key={name}
                   className={"nav " + (page === name ? "active" : "")}
                   aria-current={page === name ? "page" : undefined}
+                  title={sidebarCollapsed ? t(pageLabel(name)) : undefined}
                   onClick={() => navigate(name)}
                 >
                   <Icon name={icon} size={18} />
-                  <span>{pageLabel(name)}</span>
+                  <span>{t(pageLabel(name))}</span>
                 </button>
               ))}
               </div>
@@ -846,7 +855,7 @@ export default function PortalApp() {
           <div className="avatar">{user.name.slice(0, 1)}</div>
           <div className="account-name">
             <strong>{user.name}</strong>
-            <small>Faculty account</small>
+            <small>{t(teacher ? "Faculty account" : "Student account")}</small>
             {"__TAURI_INTERNALS__" in window && (
               <button
                 type="button"
@@ -857,18 +866,18 @@ export default function PortalApp() {
                   )
                 }
               >
-                Check for updates
+                {t("Check for updates")}
               </button>
             )}
           </div>
           <button
             className="icon-button"
-            aria-label="Sign out"
+            aria-label={t("Sign out")}
             disabled={signingOut}
             onClick={async () => {
               if (
                 dirty &&
-                !window.confirm("Discard unsaved profile changes and sign out?")
+                !window.confirm(t("Discard unsaved profile changes and sign out?"))
               )
                 return;
               setSigningOut(true);
@@ -891,7 +900,7 @@ export default function PortalApp() {
       {menu && (
         <button
           className="menu-overlay"
-          aria-label="Close navigation"
+          aria-label={t("Close navigation")}
           onClick={() => setMenu(false)}
         />
       )}
@@ -899,20 +908,33 @@ export default function PortalApp() {
         <header className="topbar">
           <button
             className="icon-button menu-toggle"
-            aria-label="Toggle navigation"
-            aria-expanded={menu}
-            onClick={() => setMenu(!menu)}
+            aria-label={t(window.matchMedia("(max-width: 900px)").matches ? "Toggle navigation" : sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")}
+            aria-expanded={window.matchMedia("(max-width: 900px)").matches ? menu : !sidebarCollapsed}
+            title={t(window.matchMedia("(max-width: 900px)").matches ? "Toggle navigation" : sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")}
+            onClick={() => {
+              if (window.matchMedia("(max-width: 900px)").matches) {
+                setMenu(!menu);
+                return;
+              }
+              const next = !sidebarCollapsed;
+              setSidebarCollapsed(next);
+              try {
+                localStorage.setItem("ub-sidebar-collapsed", String(next));
+              } catch {
+                // The collapsed state still works until this page is closed.
+              }
+            }}
           >
             <Icon name="menu" />
           </button>
           <div className="breadcrumb">
-            Campus <span>/</span> <strong>{pageLabel(page)}</strong>
+            {t("Campus")} <span>/</span> <strong>{t(pageLabel(page))}</strong>
           </div>
           <div className="global-search">
             <Icon name="search" size={18} />
             <input
-              aria-label="Find a section"
-              placeholder="Find a section…"
+              aria-label={t("Find a section")}
+              placeholder={t("Find a section…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
@@ -925,16 +947,16 @@ export default function PortalApp() {
                   matches.map(([name, icon]) => (
                     <button key={name} onClick={() => navigate(name)}>
                       <Icon name={icon} size={16} />
-                      {pageLabel(name)}
+                      {t(pageLabel(name))}
                     </button>
                   ))
                 ) : (
-                  <p>No matching section</p>
+                  <p>{t("No matching section")}</p>
                 )}
               </div>
             )}
           </div>
-          <span className="language-label">EN</span>
+          <LanguageSelect />
           <span className="avatar top-avatar">{user.name.slice(0, 1)}</span>
         </header>
         <main className="workspace">

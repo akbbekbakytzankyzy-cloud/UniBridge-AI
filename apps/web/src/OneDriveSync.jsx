@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
+import { useI18n } from "./i18n.jsx";
 
 // Teacher panel: connect Microsoft OneDrive, pick a folder, sync files into
 // the review queue below. Hidden for students (the API answers 403).
@@ -10,6 +11,7 @@ const results = {
 };
 
 export default function OneDriveSync({ onSynced }) {
+  const { t } = useI18n();
   const [status, setStatus] = useState(null),
     [hidden, setHidden] = useState(false),
     [path, setPath] = useState([{ id: "", name: "OneDrive" }]),
@@ -29,7 +31,7 @@ export default function OneDriveSync({ onSynced }) {
     const params = new URLSearchParams(window.location.search);
     const result = params.get("onedrive");
     if (result) {
-      (result === "connected" ? setNotice : setError)(results[result] || results.error);
+      (result === "connected" ? setNotice : setError)(t(results[result] || results.error));
       params.delete("onedrive");
       const rest = params.toString();
       window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : ""));
@@ -64,14 +66,12 @@ export default function OneDriveSync({ onSynced }) {
   return (
     <section className="panel onedrive-panel">
       <div className="section-heading">
-        <h2>OneDrive automatic import</h2>
-        {status?.connected && <span className="tag">Connected</span>}
+        <h2>{t("OneDrive automatic import")}</h2>
+        {status?.connected && <span className="tag">{t("Connected")}</span>}
       </div>
       <p className="muted">
-        Connect your Microsoft account and choose one folder. New and changed files (
-        {status?.supported?.join(", ") || ".xlsx, .csv, .docx, .txt"}) are imported
-        automatically every 15 minutes and appear below for your review. Nothing
-        becomes a record until you confirm it.
+        {t("Connect your Microsoft account and choose one folder.")} {t("New and changed files")} (
+        {status?.supported?.join(", ") || ".xlsx, .csv, .docx, .txt"}) {t("are imported automatically every 15 minutes and appear below for your review. Nothing becomes a record until you confirm it.")}
       </p>
       {error && (
         <p className="error" role="alert">
@@ -85,9 +85,7 @@ export default function OneDriveSync({ onSynced }) {
       )}
       {status && !status.configured && (
         <p className="source-note">
-          OneDrive is not configured on this server yet. An administrator needs to
-          register the app in Microsoft Entra and set MS_CLIENT_ID (see
-          docs/ONEDRIVE.md).
+          {t("OneDrive is not configured on this server yet. An administrator needs to register the app in Microsoft Entra and set MS_CLIENT_ID (see docs/ONEDRIVE.md).")}
         </p>
       )}
       {status?.configured && !status.connected && (
@@ -100,30 +98,30 @@ export default function OneDriveSync({ onSynced }) {
             })
           }
         >
-          Connect OneDrive
+          {t("Connect OneDrive")}
         </button>
       )}
       {status?.connected && (
         <>
           <dl className="onedrive-facts">
             <div>
-              <dt>Account</dt>
-              <dd>{c.account_name || "Microsoft account"}</dd>
+              <dt>{t("Account")}</dt>
+              <dd>{c.account_name || t("Microsoft account")}</dd>
             </div>
             <div>
-              <dt>Folder</dt>
-              <dd>{c.folder_path || "Not chosen yet"}</dd>
+              <dt>{t("Folder")}</dt>
+              <dd>{c.folder_path || t("Not chosen yet")}</dd>
             </div>
             <div>
-              <dt>Last sync</dt>
-              <dd>{c.last_sync_at ? new Date(c.last_sync_at).toLocaleString() : "Never"}</dd>
+              <dt>{t("Last sync")}</dt>
+              <dd>{c.last_sync_at ? new Date(c.last_sync_at).toLocaleString() : t("Never")}</dd>
             </div>
             <div>
-              <dt>Files tracked</dt>
+              <dt>{t("Files tracked")}</dt>
               <dd>{c.files}</dd>
             </div>
           </dl>
-          {c.last_error && <p className="error">Last sync problem: {c.last_error}</p>}
+          {c.last_error && <p className="error">{t("Last sync problem: ")} {c.last_error}</p>}
           <div className="button-group">
             {c.folder_id && (
               <button
@@ -135,24 +133,24 @@ export default function OneDriveSync({ onSynced }) {
                       ? ` Skipped: ${r.skipped.map((s) => `${s.name} (${s.reason})`).join(", ")}.`
                       : "";
                     setNotice(
-                      `Sync finished: ${r.imported} new, ${r.updated} changed, ${r.unchanged} unchanged.${skipped}`,
+                      `${t("Sync finished:")} ${r.imported} ${t("new")}, ${r.updated} ${t("changed")}, ${r.unchanged} ${t("unchanged")}.${skipped}`,
                     );
                     await load();
                     onSynced?.();
                   })
                 }
               >
-                {busy ? "Working…" : "Sync now"}
+                {busy ? t("Working…") : t("Sync now")}
               </button>
             )}
             <button className="secondary" disabled={busy} onClick={() => run(() => openFolder([{ id: "", name: "OneDrive" }]))}>
-              {c.folder_id ? "Change folder" : "Choose folder"}
+              {c.folder_id ? t("Change folder") : t("Choose folder")}
             </button>
             <button
               className="secondary"
               disabled={busy}
               onClick={() => {
-                if (!window.confirm("Disconnect OneDrive? Files already imported stay in your review list."))
+                if (!window.confirm(t("Disconnect OneDrive? Files already imported stay in your review list.")))
                   return;
                 run(async () => {
                   await api("/onedrive", undefined, "DELETE");
@@ -161,7 +159,7 @@ export default function OneDriveSync({ onSynced }) {
                 });
               }}
             >
-              Disconnect
+              {t("Disconnect")}
             </button>
           </div>
           {folders && (
@@ -182,10 +180,10 @@ export default function OneDriveSync({ onSynced }) {
                     <button type="button" className="text-button" onClick={() => run(() => openFolder([...path, f]))}>
                       📁 {f.name}
                     </button>
-                    <small> {f.children} items</small>
+                    <small> {f.children} {t(" items")}</small>
                   </li>
                 ))}
-                {!folders.folders.length && <li className="muted">No subfolders here.</li>}
+                {!folders.folders.length && <li className="muted">{t("No subfolders here.")}</li>}
               </ul>
               {current.id && (
                 <button
@@ -195,12 +193,12 @@ export default function OneDriveSync({ onSynced }) {
                       const label = path.slice(1).map((p) => p.name).join(" / ");
                       await api("/onedrive/folder", { id: current.id, path: label }, "PUT");
                       setFolders(null);
-                      setNotice(`Folder “${label}” selected. Press “Sync now” to import its files.`);
+                      setNotice(t("Folder selected. Press Sync now to import its files.").replace("{folder}", label));
                       await load();
                     })
                   }
                 >
-                  Use “{current.name}” ({folders.files} files)
+                  {t("Use folder")}: {current.name} ({folders.files} {t("files")})
                 </button>
               )}
             </div>

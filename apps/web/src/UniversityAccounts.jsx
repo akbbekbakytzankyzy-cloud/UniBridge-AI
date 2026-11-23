@@ -4,8 +4,10 @@ import BrowserImports, { DraftsToConfirm } from "./BrowserImports.jsx";
 import FieldMapping from "./FieldMapping.jsx";
 import OneDriveSync from "./OneDriveSync.jsx";
 import ImportHistory, { ImportAllPanel } from "./ImportHistory.jsx";
+import { useI18n } from "./i18n.jsx";
 
 export default function UniversityAccounts() {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -39,28 +41,25 @@ export default function UniversityAccounts() {
   }
   return (
     <section className="panel">
-      <h1>University accounts</h1>
+      <h1>{t("University accounts")}</h1>
       <p>
-        Save your AITU logins once. These details belong to your UniBridgeAI
-        account and are remembered after signing out.
+        {t("Save your AITU logins once. These details belong to your UniBridgeAI account and are remembered after signing out.")}
       </p>
       <p>
-        Connection pending: AITU SSO/API integration is not configured. Saving a
-        login or opening a university website does not verify ownership or
-        import data. Do not enter your university password here.
+        {t("Connection pending: AITU SSO/API integration is not configured. Saving a login or opening a university website does not verify ownership or import data. Do not enter your university password here.")}
       </p>
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && <p role="status">{t(notice)}</p>}
       <ImportAllPanel onDone={() => setImports((n) => n + 1)} />
       <OneDriveSync onSynced={() => setImports((n) => n + 1)} />
       <BrowserImports key={imports} />
       <DraftsToConfirm />
       <FieldMapping />
-      {!data && !error && <p>Loading accounts…</p>}
+      {!data && !error && <p>{t("Loading accounts…")}</p>}
       {data?.providers.map((p) => {
         const account = data.accounts.find((a) => a.provider === p.id);
         return (
@@ -75,11 +74,11 @@ export default function UniversityAccounts() {
             <h2>{p.name}</h2>
             <p>
               {account
-                ? "Saved · awaiting university connection"
-                : "No account saved"}
+                ? t("Saved · awaiting university connection")
+                : t("No account saved")}
             </p>
             <label>
-              University email or username
+              {t("University email or username")}
               <input
                 name="loginHint"
                 autoComplete="off"
@@ -90,7 +89,7 @@ export default function UniversityAccounts() {
               />
             </label>
             <button disabled={busy} type="submit">
-              Save account
+              {t("Save account")}
             </button>{" "}
             {account && (
               <button
@@ -98,11 +97,11 @@ export default function UniversityAccounts() {
                 type="button"
                 onClick={() => update(p.id, null)}
               >
-                Remove
+                {t("Remove")}
               </button>
             )}{" "}
             <a href={p.url} target="_blank" rel="noopener noreferrer">
-              Open {p.name}
+              {t("Open ")}{p.name}
             </a>
           </form>
         );

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { api } from "./api.js";
+import { useI18n } from "./i18n.jsx";
 
 // Proposes where each column of an uploaded export belongs. It saves nothing:
 // the owner reviews the proposals and then fills the profile manually or with autofill.
 export default function FieldMapping() {
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [provider, setProvider] = useState("local");
   const [consent, setConsent] = useState(false);
@@ -32,14 +34,12 @@ export default function FieldMapping() {
   }
   return (
     <section className="panel">
-      <h2>Map an export to my profile</h2>
+      <h2>{t("Map an export to my profile")}</h2>
       <p className="muted">
-        Paste the column names of a spreadsheet export (one per line or comma-separated). The
-        AI only suggests where each column belongs; nothing is imported. Private columns such as
-        birth date, phone or supervisor are never mapped.
+        {t("Paste the column names of a spreadsheet export (one per line or comma-separated). The AI only suggests where each column belongs; nothing is imported. Private columns such as birth date, phone or supervisor are never mapped.")}
       </p>
       <label>
-        Column names
+        {t("Column names")}
         <textarea
           rows={5}
           value={text}
@@ -55,7 +55,7 @@ export default function FieldMapping() {
           checked={provider === "local"}
           onChange={() => setProvider("local")}
         />{" "}
-        Local model (Ollama)
+        {t("Local model (Ollama)")}
       </label>{" "}
       <label>
         <input
@@ -64,7 +64,7 @@ export default function FieldMapping() {
           checked={provider === "cloud"}
           onChange={() => setProvider("cloud")}
         />{" "}
-        Cloud model (Claude Opus 5.5)
+        {t("Cloud model (Claude Opus 5.5)")}
       </label>
       {provider === "cloud" && (
         <label className="inline-check">
@@ -73,7 +73,7 @@ export default function FieldMapping() {
             checked={consent}
             onChange={(e) => setConsent(e.target.checked)}
           />{" "}
-          I agree to send these column names to OpenRouter.
+          {t("I agree to send these column names to OpenRouter.")}
         </label>
       )}
       <button
@@ -81,7 +81,7 @@ export default function FieldMapping() {
         disabled={busy || !columns.length || (provider === "cloud" && !consent)}
         onClick={propose}
       >
-        {busy ? "Analysing…" : "Propose mapping"}
+        {busy ? t("Analysing…") : t("Propose mapping")}
       </button>
       {error && (
         <p role="alert" className="error">
@@ -92,10 +92,10 @@ export default function FieldMapping() {
         <table>
           <thead>
             <tr>
-              <th>Column</th>
-              <th>Proposed field</th>
-              <th>Status</th>
-              <th>Reason</th>
+              <th>{t("Column")}</th>
+              <th>{t("Proposed field")}</th>
+              <th>{t("Status")}</th>
+              <th>{t("Reason")}</th>
             </tr>
           </thead>
           <tbody>

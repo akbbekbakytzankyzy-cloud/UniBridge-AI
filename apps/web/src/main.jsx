@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import PortalApp from "./PortalApp.jsx";
+import { LocaleProvider } from "./i18n.jsx";
 import "./style.css";
 // In the desktop app, links to other sites open in the system browser instead of doing nothing.
 document.addEventListener(
@@ -17,4 +18,8 @@ document.addEventListener(
   true,
 );
 
-createRoot(document.getElementById("root")).render(<PortalApp />);
+createRoot(document.getElementById("root")).render(
+  <LocaleProvider>
+    <PortalApp />
+  </LocaleProvider>,
+);

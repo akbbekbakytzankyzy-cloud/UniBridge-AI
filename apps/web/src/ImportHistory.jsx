@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import { invoke } from "@tauri-apps/api/core";
+import { useI18n } from "./i18n.jsx";
 
 const pad = (n) => String(n).padStart(2, "0");
 const dayOf = (iso) => {
@@ -20,6 +21,7 @@ const STATUS = {
 
 // "Check my imported data": every snapshot as a row, newest first.
 export default function ImportHistory() {
+  const { t } = useI18n();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,7 +38,7 @@ export default function ImportHistory() {
     setError("");
     try {
       const r = await fetch(`/api/browser-imports/${row.id}/download`, { credentials: "same-origin" });
-      if (!r.ok) throw new Error("Download failed");
+      if (!r.ok) throw new Error(t("Download failed"));
       const name = /filename="([^"]+)"/.exec(r.headers.get("Content-Disposition") || "")?.[1] || `import.${row.format.toLowerCase()}`;
       const url = URL.createObjectURL(await r.blob());
       const a = document.createElement("a");
@@ -52,7 +54,7 @@ export default function ImportHistory() {
   }
 
   async function remove(row) {
-    if (!window.confirm("Delete this import? Records already confirmed from it stay.")) return;
+    if (!window.confirm(t("Delete this import? Records already confirmed from it stay."))) return;
     setBusy(true);
     try {
       await api(`/browser-imports/${row.id}`, undefined, "DELETE");
@@ -66,29 +68,29 @@ export default function ImportHistory() {
 
   return (
     <section className="panel import-history">
-      <h2>Check my imported data</h2>
+      <h2>{t("Check my imported data")}</h2>
       <p className="muted">
-        Every snapshot you imported, newest first. Download a copy to your computer or ask AI what it contains.
+        {t("Every snapshot you imported, newest first. Download a copy to your computer or ask AI what it contains.")}
       </p>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {rows === null && !error && <p>Loading history…</p>}
-      {rows && rows.length === 0 && <p className="empty">Nothing imported yet.</p>}
+      {rows === null && !error && <p>{t("Loading history…")}</p>}
+      {rows && rows.length === 0 && <p className="empty">{t("Nothing imported yet.")}</p>}
       {rows && rows.length > 0 && (
         <div className="table-scroll">
           <table className="history-table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Date</th>
-                <th>Source</th>
-                <th>Size</th>
-                <th>Format</th>
-                <th>Status</th>
-                <th aria-label="Actions" />
+                <th>{t("Time")}</th>
+                <th>{t("Date")}</th>
+                <th>{t("Source")}</th>
+                <th>{t("Size")}</th>
+                <th>{t("Format")}</th>
+                <th>{t("Status")}</th>
+                <th aria-label={t("Actions")} />
               </tr>
             </thead>
             <tbody>
@@ -101,26 +103,26 @@ export default function ImportHistory() {
                     <td>{sizeOf(row.size_bytes)}</td>
                     <td>{row.format}</td>
                     <td>
-                      <span className={"tag tag-" + row.version}>{STATUS[row.version] || row.version}</span>
+                      <span className={"tag tag-" + row.version}>{t(STATUS[row.version] || row.version)}</span>
                       <br />
-                      <small className="muted">{row.status === "accepted" ? "accepted" : "pending review"}</small>
+                      <small className="muted">{t(row.status === "accepted" ? "accepted" : "pending review")}</small>
                     </td>
                     <td className="row-actions">
                       <button
                         type="button"
                         className="icon-btn"
-                        aria-label="What is in this import?"
+                        aria-label={t("What is in this import?")}
                         aria-expanded={openId === row.id}
-                        title="What is in this import?"
+                        title={t("What is in this import?")}
                         onClick={() => setOpenId(openId === row.id ? "" : row.id)}
                       >
                         ?
                       </button>
                       <button type="button" className="secondary" onClick={() => download(row)}>
-                        Download
+                        {t("Download")}
                       </button>
                       <button type="button" className="secondary" disabled={busy} onClick={() => remove(row)}>
-                        Remove
+                        {t("Remove")}
                       </button>
                     </td>
                   </tr>
@@ -143,6 +145,7 @@ export default function ImportHistory() {
 
 // Short AI description of one snapshot. Local is the default; cloud is offered first when configured.
 function ImportDescription({ row, onSaved }) {
+  const { t } = useI18n();
   const [summary, setSummary] = useState(row.ai_summary || "");
   const [model, setModel] = useState(row.ai_summary_model || "");
   const [cloud, setCloud] = useState(null);
@@ -181,35 +184,35 @@ function ImportDescription({ row, onSaved }) {
     return (
       <div>
         <p>{summary}</p>
-        <small className="muted">Described by {model}.</small>{" "}
+        <small className="muted">{t("Described by ")} {model}.</small>{" "}
         <button type="button" className="link-button" disabled={busy} onClick={() => describe(true)}>
-          Describe again
+          {t("Describe again")}
         </button>
         {error && <p role="alert" className="error">{error}</p>}
       </div>
     );
   return (
     <div>
-      <p className="muted">Ask AI for a short description of this snapshot. It reads the saved text only.</p>
+      <p className="muted">{t("Ask AI for a short description of this snapshot. It reads the saved text only.")}</p>
       {cloud !== null && (
         <fieldset className="inline-fieldset">
-          <legend>Model</legend>
+          <legend>{t("Model")}</legend>
           {cloud && (
             <label className="inline-check">
               <input type="radio" checked={provider === "cloud"} disabled={busy} onChange={() => setProvider("cloud")} />{" "}
-              Cloud (OpenRouter)
+              {t("Cloud (OpenRouter)")}
             </label>
           )}
           <label className="inline-check">
             <input type="radio" checked={provider === "local"} disabled={busy} onChange={() => setProvider("local")} />{" "}
-            Local (Ollama)
+              {t("Local (Ollama)")}
           </label>
         </fieldset>
       )}
       {provider === "cloud" && (
         <label className="inline-check">
           <input type="checkbox" checked={consent} disabled={busy} onChange={(e) => setConsent(e.target.checked)} />{" "}
-          Send this snapshot text to OpenRouter.
+          {t("Send this snapshot text to OpenRouter.")}
         </label>
       )}
       <button
@@ -217,7 +220,7 @@ function ImportDescription({ row, onSaved }) {
         disabled={busy || cloud === null || (provider === "cloud" && !consent)}
         onClick={() => describe(false)}
       >
-        {busy ? "Describing…" : "Describe with AI"}
+        {busy ? t("Describing…") : t("Describe with AI")}
       </button>
       {error && <p role="alert" className="error">{error}</p>}
     </div>
@@ -226,6 +229,7 @@ function ImportDescription({ row, onSaved }) {
 
 // "Import all information": one button per linked platform.
 export function ImportAllPanel({ onDone }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -247,7 +251,7 @@ export function ImportAllPanel({ onDone }) {
     setMessage("");
     try {
       const r = await api("/onedrive/sync", {});
-      setMessage("OneDrive synced. Files already imported and unchanged are skipped.");
+      setMessage(t("OneDrive synced. Files already imported and unchanged are skipped."));
       onDone?.();
       return r;
     } catch (e) {
@@ -258,46 +262,43 @@ export function ImportAllPanel({ onDone }) {
   }
   return (
     <section className="panel">
-      <h2>Import all information</h2>
+      <h2>{t("Import all information")}</h2>
       <p className="muted">
-        Each button brings in everything the platform makes available. Imported data is marked green in the app.
+        {t("Each button brings in everything the platform makes available. Imported data is marked green in the app.")}
       </p>
       <div className="import-all">
         <article className="import-card">
           <strong>Digital University (DU)</strong>
-          <p>
-            Opens your DU profile in the UniBridgeAI window. On the profile page choose
-            “Import full DU profile to UniBridgeAI”.
-          </p>
+          <p>{t("Opens your DU profile in the UniBridgeAI window. On the profile page choose “Import full DU profile to UniBridgeAI”.")}</p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://du.astanait.edu.kz/")}>
-            Import all information
+            {t("Import all information")}
           </button>
         </article>
         <article className="import-card">
           <strong>OneDrive</strong>
-          <p>Reads every file in the folder you chose. Unchanged files are not read again.</p>
+          <p>{t("Reads every file in the folder you chose. Unchanged files are not read again.")}</p>
           <button type="button" disabled={busy} onClick={syncOneDrive}>
-            Import all information
+            {t("Import all information")}
           </button>
         </article>
         <article className="import-card">
           <strong>AITU LMS</strong>
-          <p>Opens LMS in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.</p>
+          <p>{t("Opens LMS in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.")}</p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://lms.astanait.edu.kz/")}>
-            Import all information
+            {t("Import all information")}
           </button>
         </article>
         <article className="import-card">
           <strong>MyDU</strong>
-          <p>Opens MyDU in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.</p>
+          <p>{t("Opens MyDU in the UniBridgeAI window. On each page press “Import all information from this page”; every table is kept row by row.")}</p>
           <button type="button" disabled={!desktop} onClick={() => openInApp("https://my-du.astanait.edu.kz/")}>
-            Import all information
+            {t("Import all information")}
           </button>
         </article>
       </div>
       {!desktop && (
         <p role="status" className="muted">
-          Opening university sites needs the installed desktop app. OneDrive works in the browser.
+          {t("Opening university sites needs the installed desktop app. OneDrive works in the browser.")}
         </p>
       )}
       {message && <p role="status">{message}</p>}

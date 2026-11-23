@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import { invoke } from "@tauri-apps/api/core";
 import DuImportReview from "./DuImportReview.jsx";
+import { useI18n } from "./i18n.jsx";
 
 function Source({ item, refresh }) {
+  const { t } = useI18n();
   const [consent, setConsent] = useState(false);
   const [question, setQuestion] = useState(
     "Summarise my education, publications and achievements from this source. Cite [S1].",
@@ -15,7 +17,7 @@ function Source({ item, refresh }) {
     try {
       setFullText((await api(`/browser-imports/${item.id}`)).import.content);
     } catch (err) {
-      setFullText("Could not load the text: " + err.message);
+      setFullText(t("Could not load the text: ") + err.message);
     }
   };
   const [error, setError] = useState("");
@@ -35,14 +37,14 @@ function Source({ item, refresh }) {
   if (item.kind === "du-profile")
     return (
       <article className="panel">
-        <span className="tag">DU profile</span>{" "}
+        <span className="tag">{t("DU profile")}</span>{" "}
         <a href={item.source_url} target="_blank" rel="noopener noreferrer">
           {item.source_url}
         </a>
         <p className="muted">
           {item.status === "accepted"
-            ? "Added to your profile"
-            : "Waiting for your review"}{" "}
+            ? t("Added to your profile")
+            : t("Waiting for your review")}{" "}
           · {new Date(item.created_at).toLocaleString()}
         </p>
         <DuImportReview importId={item.id} onApplied={refresh} />
@@ -56,7 +58,7 @@ function Source({ item, refresh }) {
             })
           }
         >
-          Delete this DU snapshot
+          {t("Delete this DU snapshot")}
         </button>
         {error && <p className="error">{error}</p>}
       </article>
@@ -69,14 +71,14 @@ function Source({ item, refresh }) {
       </a>
       <p>
         {item.status === "accepted"
-          ? "Accepted snapshot"
-          : "Pending your review"}{" "}
+          ? t("Accepted snapshot")
+          : t("Pending your review")}{" "}
         · {new Date(item.created_at).toLocaleString()}
       </p>
       <details onToggle={loadFullText}>
-        <summary>Review imported text</summary>
+        <summary>{t("Review imported text")}</summary>
         <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-          {fullText ?? "Loading…"}
+          {fullText ?? t("Loading…")}
         </pre>
       </details>
       {item.status === "pending" && (
@@ -89,7 +91,7 @@ function Source({ item, refresh }) {
             })
           }
         >
-          Accept this snapshot
+          {t("Accept this snapshot")}
         </button>
       )}{" "}
       <button
@@ -101,7 +103,7 @@ function Source({ item, refresh }) {
           })
         }
       >
-        Delete snapshot
+        {t("Delete snapshot")}
       </button>
       {item.status === "accepted" && (
         <ExtractButton item={item} act={act} busy={busy} />
@@ -118,7 +120,7 @@ function Source({ item, refresh }) {
                 status.models?.find((m) => m.provider === preferred) ||
                 status.models?.[0]
               )?.name;
-              if (!model) throw new Error("No AI model configured");
+              if (!model) throw new Error(t("No AI model configured"));
               const result = await api("/ai/chat", {
                 model,
                 sourceId: item.id,
@@ -130,7 +132,7 @@ function Source({ item, refresh }) {
           }}
         >
           <label>
-            Question about this source
+            {t("Question about this source")}
             <input
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
@@ -146,14 +148,11 @@ function Source({ item, refresh }) {
               onChange={(e) => setConsent(e.target.checked)}
               disabled={busy}
             />{" "}
-            Allow sending this snapshot (up to 14,000 characters) and my
-            question to the configured AI provider, including OpenRouter for
-            cloud AI.
+            {t("Allow sending this snapshot (up to 14,000 characters) and my question to the configured AI provider, including OpenRouter for cloud AI.")}
           </label>
-          <button disabled={busy || !consent}>Ask AI about this source</button>
+          <button disabled={busy || !consent}>{t("Ask AI about this source")}</button>
           <p>
-            Answers use this saved snapshot, not live account data. Accepting a
-            snapshot does not automatically fill your profile.
+            {t("Answers use this saved snapshot, not live account data. Accepting a snapshot does not automatically fill your profile.")}
           </p>
         </form>
       )}
@@ -167,6 +166,7 @@ function Source({ item, refresh }) {
   );
 }
 export default function BrowserImports() {
+  const { t } = useI18n();
   const [items, setItems] = useState([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -194,17 +194,13 @@ export default function BrowserImports() {
   }
   return (
     <section className="panel">
-      <h2>Import through your browser</h2>
+      <h2>{t("Import through your browser")}</h2>
       <p>
-        Open an official site in the UniBridgeAI desktop window. Sign in there
-        yourself. On a profile or publication page, choose “Import this page to
-        UniBridgeAI”, review the text and send it for approval. Passwords stay
-        on the official site.
+        {t("Open an official site in the UniBridgeAI desktop window. Sign in there yourself. On a profile or publication page, choose “Import this page to UniBridgeAI”, review the text and send it for approval. Passwords stay on the official site.")}
       </p>
       {!desktop && (
         <p role="status">
-          The built-in browser is available in the installed Windows/macOS
-          desktop app. This web preview cannot inspect other tabs.
+          {t("The built-in browser is available in the installed Windows/macOS desktop app. This web preview cannot inspect other tabs.")}
         </p>
       )}
       {desktop && (
@@ -219,20 +215,20 @@ export default function BrowserImports() {
             ["ORCID", "https://orcid.org/"],
           ].map(([name, url]) => (
             <button key={url} disabled={busy} onClick={() => connect(url)}>
-              Open {name} inside UniBridgeAI
+              {t("Open ")}{name}{t(" inside UniBridgeAI")}
             </button>
           ))}
         </div>
       )}
       <button disabled={busy} onClick={() => run(load)}>
-        Refresh imports
+        {t("Refresh imports")}
       </button>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {!items.length && <p>No snapshots imported yet.</p>}
+      {!items.length && <p>{t("No snapshots imported yet.")}</p>}
       {items.map((item) => (
         <Source key={item.id} item={item} refresh={load} />
       ))}
@@ -241,6 +237,7 @@ export default function BrowserImports() {
 }
 
 function ExtractButton({ item, act, busy }) {
+  const { t } = useI18n();
   const [cloudConsent, setCloudConsent] = useState(false);
   const [provider, setProvider] = useState("local");
   const [result, setResult] = useState("");
@@ -254,7 +251,7 @@ function ExtractButton({ item, act, busy }) {
           onChange={() => setProvider("local")}
           disabled={busy}
         />{" "}
-        Analyse locally (Ollama, qwen3:4b)
+        {t("Analyse locally (Ollama, qwen3:4b)")}
       </label>{" "}
       <label>
         <input
@@ -264,7 +261,7 @@ function ExtractButton({ item, act, busy }) {
           onChange={() => setProvider("cloud")}
           disabled={busy}
         />{" "}
-        Analyse in the cloud (Claude Haiku 5.5)
+        {t("Analyse in the cloud (Claude Haiku 5.5)")}
       </label>
       {provider === "cloud" && (
         <label>
@@ -275,7 +272,7 @@ function ExtractButton({ item, act, busy }) {
             onChange={(e) => setCloudConsent(e.target.checked)}
             disabled={busy}
           />{" "}
-          I agree to send this page text to OpenRouter.
+          {t("I agree to send this page text to OpenRouter.")}
         </label>
       )}
       <br />
@@ -288,12 +285,12 @@ function ExtractButton({ item, act, busy }) {
               cloudConsent,
             });
             setResult(
-              `${r.drafts} draft record(s) created. Review them in "Drafts to confirm" below.`,
+              `${r.drafts} ${t("draft record(s) created. Review them in \"Drafts to confirm\" below.")}`,
             );
           })
         }
       >
-        Read records from this page
+        {t("Read records from this page")}
       </button>
       {result && <p role="status">{result}</p>}
     </div>
@@ -301,6 +298,7 @@ function ExtractButton({ item, act, busy }) {
 }
 
 export function DraftsToConfirm() {
+  const { t } = useI18n();
   const [drafts, setDrafts] = useState([]);
   const [error, setError] = useState("");
   const load = () =>
@@ -320,9 +318,9 @@ export function DraftsToConfirm() {
   };
   return (
     <section className="panel">
-      <h2>Drafts to confirm</h2>
+      <h2>{t("Drafts to confirm")}</h2>
       <p className="muted">
-        Nothing here is saved to your records until you confirm it.
+        {t("Nothing here is saved to your records until you confirm it.")}
       </p>
       {error && (
         <p role="alert" className="error">
@@ -345,20 +343,20 @@ export function DraftsToConfirm() {
               ))}
           </ul>
           {d.missing_fields.length > 0 && (
-            <p>Not found on the page: {d.missing_fields.join(", ")}</p>
+            <p>{t("Not found on the page: ")} {d.missing_fields.join(", ")}</p>
           )}
           {d.warnings.map((w) => (
             <p key={w} className="error">
               {w}
             </p>
           ))}
-          <button onClick={() => decide(d.id, "confirm")}>Confirm</button>{" "}
+          <button onClick={() => decide(d.id, "confirm")}>{t("Confirm")}</button>{" "}
           <button className="secondary" onClick={() => decide(d.id, "reject")}>
-            Reject
+            {t("Reject")}
           </button>
         </article>
       ))}
-      {!drafts.length && <p className="empty">No drafts waiting.</p>}
+      {!drafts.length && <p className="empty">{t("No drafts waiting.")}</p>}
     </section>
   );
 }
