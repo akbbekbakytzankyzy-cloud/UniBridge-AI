@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "unibridge-university-source",
+  "description": "Allows supported university and research pages to send a reviewed snapshot through the one-time import code.",
+  "windows": ["university-source"],
+  "remote": {
+    "urls": [
+      "https://du.astanait.edu.kz/*",
+      "https://my-du.astanait.edu.kz/*",
+      "https://lms.astanait.edu.kz/*",
+      "https://linkedin.com/*",
+      "https://www.linkedin.com/*",
+      "https://scopus.com/*",
+      "https://www.scopus.com/*",
+      "https://researchgate.net/*",
+      "https://www.researchgate.net/*",
+      "https://orcid.org/*"
+    ]
+  },
+  "permissions": ["allow-capture-university-page"]
+}

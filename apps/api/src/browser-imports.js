@@ -2,7 +2,6 @@ import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { newToken, tokenHash } from "./security.js";
-import { timingSafeEqual } from "node:crypto";
 import { roleModels } from "./ai-models.js";
 import { sourceGroup, sourceLabel } from "./import-sources.js";
 import { isDuCapture, parseDuCapture } from "./du-import.js";
@@ -32,24 +31,15 @@ export function cleanSource(value) {
   return url.origin + url.pathname; // Never persist query tokens or fragments.
 }
 
-// The native bridge holds a process-only secret and accepts only expiring,
-// single-use codes for page snapshots reviewed by the user.
-export function browserCaptureRouter(pool, nativeCaptureToken = "") {
+// The desktop bridge submits snapshots only with expiring, single-use codes
+// created for the signed-in user. The code is a one-request capability.
+export function browserCaptureRouter(pool) {
   const router = Router();
   router.post(
     "/native-capture",
     rateLimit({ windowMs: 60000, limit: 20 }),
     async (req, res) => {
       res.set("Cache-Control", "no-store");
-      const presented = req.get("x-unibridge-capture") || "";
-      const expected = Buffer.from(nativeCaptureToken);
-      const candidate = Buffer.from(presented);
-      if (
-        !nativeCaptureToken ||
-        candidate.length !== expected.length ||
-        !timingSafeEqual(candidate, expected)
-      )
-        return res.status(403).json({ error: "Native capture is unavailable" });
       const input = z
         .object({
           token: z.string().regex(/^[a-f0-9]{64}$/),

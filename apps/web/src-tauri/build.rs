@@ -5,6 +5,7 @@ fn main() {
             "capture_university_page",
             "check_for_updates",
             "open_external_link",
+            "verify_legacy_local_account",
         ]),
     );
     tauri_build::try_build(attributes).expect("failed to configure Tauri permissions");

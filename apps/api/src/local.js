@@ -24,7 +24,6 @@ const port = Number(process.env.UB_PORT || 3001);
 const origin = process.env.UB_ORIGIN || "http://localhost:5173";
 const staticDir = process.env.UB_STATIC_DIR || null;
 const shutdownToken = process.env.UB_SHUTDOWN_TOKEN || "";
-const nativeCaptureToken = process.env.UB_NATIVE_CAPTURE_TOKEN || "";
 await mkdir(data, { recursive: true });
 // Reserve the API port BEFORE opening PGlite: two processes must never open it.
 let app;
@@ -111,7 +110,6 @@ try {
     origin,
     staticDir,
     allowRegistration: process.env.UB_ALLOW_REGISTRATION !== "0",
-    nativeCaptureToken,
     onedrive: { secretKey },
   });
   // Automatic OneDrive sync for connected teachers (default every 15 minutes).

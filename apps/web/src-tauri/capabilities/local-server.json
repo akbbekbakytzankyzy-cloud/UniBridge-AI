@@ -5,11 +5,17 @@
   "windows": ["main"],
   "remote": {
     "urls": [
+      "https://80.247.203.210/*",
       "http://localhost:3417/*",
       "http://127.0.0.1:3417/*",
       "http://localhost:5173/*",
       "http://127.0.0.1:5173/*"
     ]
   },
-  "permissions": ["allow-open-university-browser", "allow-check-for-updates", "allow-open-external-link"]
+  "permissions": [
+    "allow-open-university-browser",
+    "allow-check-for-updates",
+    "allow-open-external-link",
+    "allow-verify-legacy-local-account"
+  ]
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { Icon } from "./icons.jsx";
 import FacultyWorkspace from "./FacultyApp.jsx";
@@ -103,15 +103,55 @@ function Login({ onLogin }) {
     setBusy(true);
     setError("");
     try {
-      const data =
-        mode === "register"
-          ? await api("/auth/register", {
-              name: v.name,
+      let data;
+      let loginNotice = "";
+      if (mode === "register") {
+        data = await api("/auth/register", {
+          name: v.name,
+          email: v.email,
+          password: v.password,
+        });
+      } else {
+        try {
+          data = await api("/auth/login", {
+            email: v.email,
+            password: v.password,
+          });
+        } catch (loginError) {
+          const invoke = window.__TAURI_INTERNALS__?.invoke;
+          if (loginError.message !== "Invalid email or password" || !invoke)
+            throw loginError;
+          let legacyUser;
+          try {
+            legacyUser = await invoke("verify_legacy_local_account", {
               email: v.email,
               password: v.password,
-            })
-          : await api("/auth/login", { email: v.email, password: v.password });
-      onLogin(data.user);
+            });
+          } catch {
+            throw loginError;
+          }
+          if (legacyUser.role !== "student")
+            throw new Error(
+              "This previous local account needs an administrator to move it to the shared server.",
+            );
+          try {
+            data = await api("/auth/register", {
+              name: legacyUser.name,
+              email: legacyUser.email,
+              password: v.password,
+            });
+          } catch (migrationError) {
+            if (migrationError.message.includes("already exists"))
+              throw new Error(
+                "A website account already uses this email. Sign in with that account's password; the local account was left unchanged.",
+              );
+            throw migrationError;
+          }
+          loginNotice =
+            "Your previous local login now works on the website too. Older records remain saved on this device and have not been copied to the server.";
+        }
+      }
+      onLogin(data.user, loginNotice);
     } catch (err) {
       setError(
         err.message === "Invalid input"
@@ -250,8 +290,7 @@ function Login({ onLogin }) {
           </p>
         )}
         <p className="signin-note">
-          Use your UniBridgeAI account. This platform has its own authentication
-          and data.
+          One UniBridgeAI account works on the website and in the desktop app.
         </p>
         <div className="login-links">
           <a
@@ -599,7 +638,10 @@ export default function PortalApp() {
       }
     }),
     [dirty, setDirty] = useState(false),
-    [signingOut, setSigningOut] = useState(false);
+    [signingOut, setSigningOut] = useState(false),
+    [sessionNotice, setSessionNotice] = useState("");
+  const pendingRemoteSync = useRef(false);
+  const [remoteRevision, setRemoteRevision] = useState(0);
   useEffect(() => {
     api("/auth/me")
       .then((d) => setUser(d.user))
@@ -611,6 +653,34 @@ export default function PortalApp() {
       })
       .finally(() => setLoading(false));
   }, []);
+  useEffect(() => {
+    if (!user) return;
+    const events = new EventSource("/api/events");
+    const changed = () => {
+      pendingRemoteSync.current = true;
+      setRemoteRevision((revision) => revision + 1);
+    };
+    events.addEventListener("changed", changed);
+    return () => events.close();
+  }, [user]);
+  useEffect(() => {
+    if (!user || !pendingRemoteSync.current || dirty) return;
+    let timer;
+    const syncWhenSafe = () => {
+      const active = document.activeElement;
+      if (
+        document.visibilityState === "hidden" ||
+        active?.matches?.("input, textarea, select, [contenteditable=true]")
+      ) {
+        timer = setTimeout(syncWhenSafe, 1000);
+        return;
+      }
+      pendingRemoteSync.current = false;
+      window.location.reload();
+    };
+    timer = setTimeout(syncWhenSafe, 500);
+    return () => clearTimeout(timer);
+  }, [user, dirty, remoteRevision]);
   useEffect(() => {
     if (!user) return;
     let active = true;
@@ -719,8 +789,9 @@ export default function PortalApp() {
           </div>
         )}
         <Login
-          onLogin={(u) => {
+          onLogin={(u, message) => {
             setUser(u);
+            setSessionNotice(message || "");
             setPage("Dashboard");
             setSummary(null);
             setError("");
@@ -871,6 +942,11 @@ export default function PortalApp() {
           <span className="avatar top-avatar">{user.name.slice(0, 1)}</span>
         </header>
         <main className="workspace">
+          {sessionNotice && (
+            <p role="status" className="notice">
+              {sessionNotice}
+            </p>
+          )}
           {error && (
             <p role="alert" className="error">
               {error}

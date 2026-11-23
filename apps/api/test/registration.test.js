@@ -92,6 +92,16 @@ test("self-registration creates a signed-in student only", async (t) => {
   );
   assert.equal(
     (
+      await post("/auth/register", {
+        name: "Same person, different case",
+        email: "NEW@test.edu",
+        password: "Another-password-123",
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
       await post("/auth/login", {
         email: "new@test.edu",
         password: "Long-password-123",
@@ -108,7 +118,6 @@ test("self-registration creates a signed-in student only", async (t) => {
 test("university account declarations persist across login and remain private and unverified", async (t) => {
   const { base, post } = await serve(t, {
     allowRegistration: true,
-    nativeCaptureToken: "test-native-capture-secret",
   });
   const signup = await post("/auth/register", {
     name: "Account Owner",
@@ -184,6 +193,27 @@ test("university account declarations persist across login and remain private an
     password: "Long-password-123",
   });
   const newCookie = login.headers.get("set-cookie").split(";")[0];
+  const secondLogin = await post("/auth/login", {
+    email: "owner@test.edu",
+    password: "Long-password-123",
+  });
+  const secondCookie = secondLogin.headers.get("set-cookie").split(";")[0];
+  const events = await fetch(base + "/events", {
+    headers: { Cookie: newCookie, Accept: "text/event-stream" },
+  });
+  assert.equal(events.status, 200);
+  const eventReader = events.body.getReader();
+  await eventReader.read(); // Initial ready frame.
+  const nextEvent = eventReader.read();
+  await request(
+    "/university-accounts/du",
+    "PUT",
+    { loginHint: "updated-owner@astanait.edu.kz" },
+    secondCookie,
+  );
+  const changedEvent = await nextEvent;
+  assert.match(new TextDecoder().decode(changedEvent.value), /event: changed/);
+  await eventReader.cancel();
   const saved = await (
     await request("/university-accounts", "GET", undefined, newCookie)
   ).json();
@@ -192,13 +222,11 @@ test("university account declarations persist across login and remain private an
   const importCode = (
     await (await request("/browser-imports/code", "POST", {}, newCookie)).json()
   ).code;
-  const capture = (token, captureSecret = "test-native-capture-secret") =>
+  const capture = (token) =>
     fetch(base + "/browser-import/native-capture", {
       method: "POST",
       headers: {
-        Origin: "http://localhost:5173",
         "Content-Type": "application/json",
-        "x-unibridge-capture": captureSecret,
       },
       body: JSON.stringify({
         token,
@@ -206,7 +234,6 @@ test("university account declarations persist across login and remain private an
         content: "Synthetic education record",
       }),
     });
-  assert.equal((await capture(importCode, "wrong-secret")).status, 403);
   assert.equal((await capture("a".repeat(64))).status, 401);
   assert.equal((await capture(importCode)).status, 201);
   assert.equal((await capture(importCode)).status, 401);

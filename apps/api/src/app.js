@@ -39,11 +39,11 @@ export async function createApp(
     ai = {},
     staticDir = null,
     allowRegistration = false,
-    nativeCaptureToken = "",
     onedrive = {},
   } = {},
 ) {
   const app = express();
+  const changeListeners = new Map();
   const onedriveCfg = onedriveConfig(process.env, {
     redirectUri: `${origin}/api/onedrive-callback`,
     ...onedrive,
@@ -82,10 +82,7 @@ export async function createApp(
     });
   }
   app.use(express.json({ limit: "1mb" }));
-  app.use(
-    "/api/browser-import",
-    browserCaptureRouter(pool, nativeCaptureToken),
-  );
+  app.use("/api/browser-import", browserCaptureRouter(pool));
   app.use("/api/onedrive-callback", onedriveCallbackRouter(pool, onedriveCfg));
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
@@ -184,6 +181,39 @@ export async function createApp(
     );
     if (!rows[0]) return res.status(401).json({ error: "Session expired" });
     req.user = rows[0];
+    req.sessionHash = tokenHash(token);
+    next();
+  });
+  app.get("/api/events", (req, res) => {
+    res.status(200).set({
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    res.flushHeaders();
+    res.write("event: ready\ndata: {}\n\n");
+    const client = { res, sessionHash: req.sessionHash };
+    const listeners = changeListeners.get(req.user.id) || new Set();
+    listeners.add(client);
+    changeListeners.set(req.user.id, listeners);
+    const heartbeat = setInterval(() => res.write(": keep-alive\n\n"), 25000);
+    res.on("close", () => {
+      clearInterval(heartbeat);
+      listeners.delete(client);
+      if (!listeners.size) changeListeners.delete(req.user.id);
+    });
+  });
+  app.use("/api", (req, res, next) => {
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+      res.once("finish", () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) return;
+        for (const client of changeListeners.get(req.user.id) || []) {
+          if (client.sessionHash !== req.sessionHash)
+            client.res.write("event: changed\ndata: {}\n\n");
+        }
+      });
+    }
     next();
   });
   app.get("/api/auth/me", (req, res) => res.json({ user: req.user }));

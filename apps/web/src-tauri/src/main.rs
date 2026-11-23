@@ -1,9 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! UniBridgeAI desktop shell.
 //!
-//! Starts the bundled Node.js server (embedded PostgreSQL + API + web UI) on
-//! 127.0.0.1, shows it in the window, stops it cleanly on exit so the database
-//! files are closed properly, and installs signed updates from GitHub Releases.
+//! Keeps the bundled local database available for legacy data and login migration,
+//! opens the shared campus service, and installs signed updates from GitHub Releases.
 
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
@@ -21,11 +20,11 @@ use tauri_plugin_updater::UpdaterExt;
 
 const PORT: u16 = 3417;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
+const REMOTE_APP_URL: &str = "https://80.247.203.210/";
 
 struct Server {
     child: Mutex<Option<Child>>,
     token: String,
-    capture_token: String,
 }
 
 struct ImportCode(Mutex<Option<String>>);
@@ -55,7 +54,7 @@ fn local_request(method: &str, path: &str, token: &str, timeout: Duration) -> Op
         .ok()
 }
 
-fn start_server(app: &AppHandle, token: &str, capture_token: &str, data_dir: &PathBuf) -> Result<Child, String> {
+fn start_server(app: &AppHandle, token: &str, data_dir: &PathBuf) -> Result<Child, String> {
     let server_dir = app
         .path()
         .resource_dir()
@@ -80,7 +79,6 @@ fn start_server(app: &AppHandle, token: &str, capture_token: &str, data_dir: &Pa
         .env("UB_ORIGIN", format!("http://localhost:{PORT}"))
         .env("UB_STATIC_DIR", server_dir.join("web"))
         .env("UB_SHUTDOWN_TOKEN", token)
-        .env("UB_NATIVE_CAPTURE_TOKEN", capture_token)
         .env("UB_EXIT_WITH_STDIN", "1")
         .env_remove("NODE_ENV")
         .env_remove("NODE_OPTIONS")
@@ -108,19 +106,23 @@ fn supported_source(url: &Url) -> bool {
         ))
 }
 
-fn post_native_capture(secret: &str, code: &str, source: &str, content: &str) -> Result<(), String> {
-    let body = serde_json::json!({"token":code,"sourceUrl":source,"content":content}).to_string();
-    let mut stream = TcpStream::connect_timeout(&([127,0,0,1], PORT).into(), Duration::from_secs(3)).map_err(|_| "UniBridgeAI local server is unavailable".to_string())?;
-    stream.set_read_timeout(Some(Duration::from_secs(5))).map_err(|e| e.to_string())?;
-    stream.set_write_timeout(Some(Duration::from_secs(5))).map_err(|e| e.to_string())?;
-    let request = format!("POST /api/browser-import/native-capture HTTP/1.1\r\nHost: localhost:{PORT}\r\nOrigin: http://localhost:{PORT}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nx-unibridge-capture: {secret}\r\nConnection: close\r\n\r\n{body}", body.len());
-    stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
-    let mut response = String::new();
-    stream.read_to_string(&mut response).map_err(|e| e.to_string())?;
-    let (head, payload) = response.split_once("\r\n\r\n").ok_or("Invalid local server response")?;
-    let status: u16 = head.lines().next().and_then(|line| line.split_whitespace().nth(1)).and_then(|code| code.parse().ok()).ok_or("Invalid local server status")?;
-    if status == 201 { return Ok(()); }
-    let message = serde_json::from_str::<serde_json::Value>(payload).ok().and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string)).unwrap_or_else(|| "Could not import this page".to_string());
+fn post_native_capture(code: &str, source: &str, content: &str) -> Result<(), String> {
+    let response = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|_| "Could not prepare the secure upload".to_string())?
+        .post(format!("{REMOTE_APP_URL}api/browser-import/native-capture"))
+        .json(&serde_json::json!({"token":code,"sourceUrl":source,"content":content}))
+        .send()
+        .map_err(|_| "Could not reach the UniBridgeAI server".to_string())?;
+    if response.status() == reqwest::StatusCode::CREATED {
+        return Ok(());
+    }
+    let message = response
+        .json::<serde_json::Value>()
+        .ok()
+        .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
+        .unwrap_or_else(|| "Could not import this page".to_string());
     Err(message)
 }
 
@@ -149,16 +151,39 @@ async fn open_university_browser(app: AppHandle, state: State<'_, ImportCode>, u
 }
 
 #[tauri::command]
-fn capture_university_page(content: String, webview: Webview, server: State<'_, Server>, code: State<'_, ImportCode>) -> Result<(), String> {
+fn capture_university_page(content: String, webview: Webview, code: State<'_, ImportCode>) -> Result<(), String> {
     if webview.label() != "university-source" { return Err("Capture is available only in the UniBridgeAI university window".into()); }
     if content.trim().is_empty() || content.encode_utf16().count() > 300_000 { return Err("The page is too large to import (maximum 300,000 characters)".into()); }
     let url = webview.url().map_err(|_| "Could not read the current page")?;
     if !supported_source(&url) { return Err("This page is outside the supported university and research sites".into()); }
     let import_code = code.0.lock().map_err(|_| "Import window is busy")?.clone().ok_or("Return to UniBridgeAI and generate a new import code")?;
     let source = format!("{}{}", url.origin().ascii_serialization(), url.path());
-    post_native_capture(&server.capture_token, &import_code, &source, content.trim())?;
+    post_native_capture(&import_code, &source, content.trim())?;
     *code.0.lock().map_err(|_| "Import window is busy")? = None;
     Ok(())
+}
+
+#[tauri::command]
+fn verify_legacy_local_account(email: String, password: String) -> Result<serde_json::Value, String> {
+    if email.len() > 254 || password.is_empty() || password.len() > 128 {
+        return Err("Invalid local account credentials".into());
+    }
+    let response = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+        .map_err(|_| "Could not check the previous local account".to_string())?
+        .post(format!("http://127.0.0.1:{PORT}/api/auth/login"))
+        .header("Origin", format!("http://localhost:{PORT}"))
+        .json(&serde_json::json!({ "email": email, "password": password }))
+        .send()
+        .map_err(|_| "No previous local account was found on this device".to_string())?;
+    if !response.status().is_success() {
+        return Err("The email or password does not match a previous local account".into());
+    }
+    response
+        .json::<serde_json::Value>()
+        .map(|body| body["user"].clone())
+        .map_err(|_| "Could not read the previous local account".to_string())
 }
 
 /// Ask the server to close the database, then make sure the process is gone.
@@ -187,26 +212,6 @@ fn fail(app: &AppHandle, message: String) {
             stop_server(&handle);
             handle.exit(1);
         });
-}
-
-fn show_first_run_credentials(app: &AppHandle, data_dir: &PathBuf) {
-    let marker = data_dir.join(".credentials-shown");
-    let file = data_dir.join("local-access.txt");
-    if marker.exists() {
-        return;
-    }
-    if let Ok(text) = fs::read_to_string(&file) {
-        let _ = fs::write(&marker, "");
-        app.dialog()
-            .message(format!(
-                "Аккаунты для входа (сохранены в файле):\n{}\n\n{}",
-                file.display(),
-                text.trim()
-            ))
-            .title("UniBridgeAI — первый запуск")
-            .kind(MessageDialogKind::Info)
-            .show(|_| {});
-    }
 }
 
 // Writes one line to update.log in the app data folder, so a silent failure
@@ -323,8 +328,7 @@ fn main() {
             let data_dir = app.path().app_data_dir()?;
             fs::create_dir_all(&data_dir)?;
             let token = random_token();
-            let capture_token = random_token();
-            let child = match start_server(&handle, &token, &capture_token, &data_dir) {
+            let child = match start_server(&handle, &token, &data_dir) {
                 Ok(child) => Some(child),
                 Err(e) => {
                     fail(&handle, format!("Не удалось запустить сервер UniBridgeAI.\n{e}"));
@@ -334,7 +338,6 @@ fn main() {
             app.manage(Server {
                 child: Mutex::new(child),
                 token,
-                capture_token,
             });
             app.manage(ImportCode(Mutex::new(None)));
             std::thread::spawn(move || {
@@ -367,7 +370,7 @@ fn main() {
                 // scheme to http is not reliable on every platform.)
                 let h = handle.clone();
                 let _ = handle.run_on_main_thread(move || {
-                    let url: Url = format!("http://localhost:{PORT}/").parse().unwrap();
+                    let url: Url = REMOTE_APP_URL.parse().unwrap();
                     let built = WebviewWindowBuilder::new(&h, "main", WebviewUrl::External(url))
                         .title("UniBridgeAI")
                         .inner_size(1280.0, 850.0)
@@ -382,12 +385,11 @@ fn main() {
                         Err(e) => fail(&h, format!("Не удалось открыть окно: {e}")),
                     }
                 });
-                show_first_run_credentials(&handle, &data_dir);
                 check_for_update(handle, false);
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![open_university_browser, capture_university_page, check_for_updates, open_external_link])
+        .invoke_handler(tauri::generate_handler![open_university_browser, capture_university_page, check_for_updates, open_external_link, verify_legacy_local_account])
         .build(tauri::generate_context!())
         .expect("Failed to launch UniBridgeAI");
     app.run(|handle, event| {
