@@ -140,10 +140,18 @@ export async function runAssistantWithTools({ ai, model, pool, userId, question,
       maxTokens: 350,
       contextTokens: 4096,
     });
-    if (out.answer) return { answer: out.answer, tools: transcript.map((t) => t.tool) };
-    if (!out.tool) throw new Error("The assistant returned neither an answer nor a tool call");
-    const result = await runner.run(out.tool, out.args || {});
-    transcript.push({ tool: out.tool, result: clip(String(result)) });
+    // Smaller local models sometimes fill both fields. A valid tool choice is
+    // authoritative; don't accidentally show its stray answer as final text.
+    if (out.tool) {
+      if (!TOOL_SPECS.some((tool) => tool.name === out.tool))
+        throw new Error("The assistant selected an unavailable tool");
+      const result = await runner.run(out.tool, out.args || {});
+      transcript.push({ tool: out.tool, result: clip(String(result)) });
+      continue;
+    }
+    if (typeof out.answer === "string" && out.answer.trim())
+      return { answer: out.answer, tools: transcript.map((t) => t.tool) };
+    throw new Error("The assistant returned neither an answer nor a tool call");
   }
   throw new Error("The assistant needed too many steps. Ask a narrower question.");
 }

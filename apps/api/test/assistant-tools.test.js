@@ -33,7 +33,7 @@ test("the assistant answers from its own records through read-only tools", async
     assert.equal(model, "qwen3:4b");
     assert.ok(schema.required.includes("tool"));
     if (!/TOOL RESULTS SO FAR/.test(user))
-      return { tool: "search_my_records", args: { query: "Energy" }, answer: null };
+      return { tool: "search_my_records", args: { query: "Energy" }, answer: "{" };
     return { tool: null, args: {}, answer: "You have one article: Smart Campus Energy Optimization (2025) [publications]." };
   } };
   const app = await createApp(db, { ai: { client: ai, fetcher: async (url) => {
