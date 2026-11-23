@@ -17,9 +17,11 @@ const server = app.listen(Number(process.env.PORT || 3001), "127.0.0.1", () =>
   ),
 );
 for (const signal of ["SIGINT", "SIGTERM"])
-  process.on(signal, () =>
+  process.on(signal, () => {
     server.close(async () => {
       await pool.end();
       process.exit(0);
-    }),
-  );
+    });
+    // Close long-lived SSE connections so systemd restarts do not stall.
+    server.closeAllConnections?.();
+  });
